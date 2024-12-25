@@ -33,7 +33,7 @@ class Visualizer():
         self.saved = False
 
     # |visuals|: dictionary of images to display or save
-    def display_current_results(self, visuals, epoch, save_result):
+    def display_current_results(self, visuals, epoch, save_result,times):
         if self.display_id > 0:  # show images in the browser
             ncols = self.opt.display_single_pane_ncols
             if ncols > 0:
@@ -65,9 +65,9 @@ class Visualizer():
                 # pane col = image row
                 self.vis.images(images, nrow=ncols, win=self.display_id + 1,
                                 padding=2, opts=dict(title=title + ' images'))
-                label_html = '<table>%s</table>' % label_html
-                self.vis.text(table_css + label_html, win=self.display_id + 2,
-                              opts=dict(title=title + ' labels'))
+                # label_html = '<table>%s</table>' % label_html
+                # self.vis.text(table_css + label_html, win=self.display_id + 2,
+                #               opts=dict(title=title + ' labels'))
             else:
                 idx = 1
                 for label, image_numpy in visuals.items():
@@ -78,7 +78,7 @@ class Visualizer():
         if self.use_html and (save_result or not self.saved):  # save images to a html file
             self.saved = True
             for label, image_numpy in visuals.items():
-                img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
+                img_path = os.path.join(self.img_dir, 'epoch%.3d_%s_%.4d.png' % (epoch, label,times))
                 util.save_image(image_numpy, img_path)
             # update website
             # webpage = html.HTML(self.web_dir, 'Experiment name = %s' % self.name, reflesh=1)

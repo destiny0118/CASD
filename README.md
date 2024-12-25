@@ -90,14 +90,20 @@ The dataset structure is recommended as:
 ### Training
 
 ```bash
-python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-train.csv --name CASD_test --batchSize 16 --gpu_ids 0,1 --which_model_netG CASD --checkpoints_dir ./checkpoints
+python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-train.csv --name CASD_test --batchSize 8 --gpu_ids 0 --which_model_netG CASD --checkpoints_dir ./checkpoints
 ```
+
+```bash
+python train.py   --gpu_ids 0 --checkpoints_dir ./checkpoints
+
+```
+
 The models are save in `./checkpoints`. 
 
 ### Testing
 Download our pretrained model from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing). Put the obtained checkpoints under `./checkpoints/CASD_test`. Modify your data path and launch
 ```bash
-python test.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv --checkpoints_dir ./checkpoints --results_dir ./results --name CASD_test --phase test  --batchSize 1  --gpu_ids 0,0 --which_model_netG CASD --which_epoch 1000
+python test.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv --checkpoints_dir ./checkpoints --results_dir ./results --name CASD_test --phase test  --batchSize 1  --gpu_ids 0 --which_model_netG CASD --which_epoch 1000
 ```
 The result images are save in `./results`. 
 

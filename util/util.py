@@ -78,7 +78,7 @@ def draw_dis_from_map(pose_map, threshold=0.1, **kwargs):
     # print(pose_map.shape)
     if torch.is_tensor(pose_map):
         pose_map = pose_map[0].cpu().transpose(1, 0).transpose(2, 1).numpy()
-        print(pose_map.shape)
+        # print(pose_map.shape)
     cords = map_to_cord(pose_map, threshold=threshold)
     return draw_dis_from_cords(cords, pose_map.shape[:2], **kwargs)
 
