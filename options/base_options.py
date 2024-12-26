@@ -17,7 +17,7 @@ class BaseOptions():
                                  help='path to images ')
         self.parser.add_argument('--dirSem', default='./dataset/fashion',\
                                  help='path to semantic images')
-
+        self.parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
 
         self.parser.add_argument('--which_model_netG', type=str, default='CASD', help='selects model to use for netG')
         self.parser.add_argument('--name', type=str,
@@ -39,7 +39,7 @@ class BaseOptions():
                                  help='chooses which model to use. cycle_gan, pix2pix, test')
         self.parser.add_argument('--which_direction', type=str, default='AtoB', help='AtoB or BtoA')
 
-        self.parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
+
         self.parser.add_argument('--norm', type=str, default='instance', help='instance normalization or batch normalization')
         self.parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
         self.parser.add_argument('--display_winsize', type=int, default=256,  help='display window size')

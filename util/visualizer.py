@@ -114,13 +114,20 @@ class Visualizer():
 
     # errors: same format as |errors| of plotCurrentErrors
     def print_current_errors(self, epoch, i, errors, t):
-        message = '(epoch: %d, iters: %d, time: %.3f) ' % (epoch, i, t)
+        message = ''
         for k, v in errors.items():
             message += '%s: %.3f ' % (k, v)
-
+        message+='(epoch: %d, iters: %d, time: %.3f) ' % (epoch, i, t)
         print(message)
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)
+
+    def print_epoch_errors(self,epoch,total,errors,t):
+        message ='End of epoch %d / %d \t Time Taken: %d sec' %(epoch, total,t)+ '\n'
+        for k, v in errors.items():
+            message += '%s: %.3f ' % (k, v)
+        message+="\n============================================================================================="
+        print(message)
 
     # save image to the disk
     def save_images(self, webpage, visuals, image_path):

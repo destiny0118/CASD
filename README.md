@@ -94,7 +94,7 @@ python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLs
 ```
 
 ```bash
-python train.py   --gpu_ids 0 --checkpoints_dir ./checkpoints
+python train.py   --gpu_ids 0 
 
 ```
 
