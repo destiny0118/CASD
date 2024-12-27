@@ -10,6 +10,9 @@ from torch.nn.parameter import Parameter
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
 import functools
 
+from models.tools.BasicBlocks import LinearBlock, Conv2dBlock_my, ResBlock, Conv2dBlock
+from models.tools.functions import get_norm_layer, LayerNorm, AdaptiveInstanceNorm2d, SPADE
+
 
 # Moddfied with AdINGen
 class ADGen(nn.Module):
@@ -132,6 +135,7 @@ class VggStyleEncoder(nn.Module):
         return codes_vector.view(bs, -1).unsqueeze(2).unsqueeze(3)
 
 
+# 对输入的目标人物姿势进行编码
 class ContentEncoder(nn.Module):
     def __init__(self, layers=2, ngf=64, img_f=512, use_spect = False, use_coord = False):
         super(ContentEncoder, self).__init__()
@@ -156,6 +160,8 @@ class ContentEncoder(nn.Module):
         self.model0 += [nonlinearity]
         self.model0 += [nn.Conv2d(128, 256, 1, 1, 0)]
         self.model0 = nn.Sequential(*self.model0)
+
+        self.poseFeatures={}
 
     def forward(self, x):
         out = self.block0(x)
@@ -185,6 +191,28 @@ class FFN(nn.Module):
         x = torch.reshape(x, (b, c, h, w))
         return x
 
+class MyDecoder(nn.Module):
+    def __init__(self, n_upsample, dim, activ='relu', pad_type='zero'):
+        super(MyDecoder,self).__init__()
+
+        self.n_upsample = n_upsample
+        self.model1=[]
+        for i in range(n_upsample):
+            # block= [nn.Upsample(scale_factor=2),
+            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            # block = nn.Sequential(*block)
+            # setattr(self, 'decoder' + str(i), block)
+
+            self.model1 += [nn.Upsample(scale_factor=2),
+                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            dim //= 2
+        self.model1 = nn.Sequential(*self.model1)
+    def forward(self, x):
+        # for i in range(self.n_upsample):
+        #     block = getattr(self, 'decoder' + str(i))
+        #     x=block(x)
+        x=self.model1(x)
+        return x
 
 
 class Decoder(nn.Module):
@@ -220,11 +248,14 @@ class Decoder(nn.Module):
         self.model0_7 = [ResBlock_myDFNM(dim, 'spade', activ, pad_type=pad_type)]
         self.model0_7 = nn.Sequential(*self.model0_7)
         # upsampling blocks
+        self.model1 = MyDecoder(n_upsample, dim, activ, pad_type=pad_type)
         for i in range(n_upsample):
-            self.model1 += [nn.Upsample(scale_factor=2),
-                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            # self.model1 += [nn.Upsample(scale_factor=2),
+            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
-        self.model1 = nn.Sequential(*self.model1)
+        # self.model1 = nn.Sequential(*self.model1)
+
+
         # use reflection padding in the last conv layer
         self.model2 += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
         self.model2 = nn.Sequential(*self.model2)
@@ -363,8 +394,11 @@ class ILNQT(nn.Module):
         self.beta.data.fill_(0.0)
 
     def forward(self, input):
+        # 1*256*1*1  通道维度计算均值，方差
         in_mean, in_var = torch.mean(input, dim=[2, 3], keepdim=True), torch.var(input, dim=[2, 3], keepdim=True)
         out_in = (input - in_mean) / torch.sqrt(in_var + self.eps)
+
+        # 1*1*64*64
         ln_mean, ln_var = torch.mean(input, dim=[1], keepdim=True), torch.var(input, dim=[1], keepdim=True)
         out_ln = (input - ln_mean) / torch.sqrt(ln_var + self.eps)
         out = self.rho.expand(input.shape[0], -1, -1, -1) * out_in + (1-self.rho.expand(input.shape[0], -1, -1, -1)) * out_ln
@@ -439,7 +473,7 @@ class ResBlock_my(nn.Module):
         out += residual
         return out
 
-
+# 参数：输入维度、输出维度、中间层维度、中间隐藏层个数
 class MLP(nn.Module):
     def __init__(self, input_dim, output_dim, dim, n_blk, norm='none', activ='relu'):
 
@@ -453,373 +487,6 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-
-
-##################################################################################
-# Basic Blocks
-##################################################################################
-class ResBlock(nn.Module):
-    def __init__(self, dim, norm='in', activation='relu', pad_type='zero'):
-        super(ResBlock, self).__init__()
-
-        model = []
-        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation=activation, pad_type=pad_type)]
-        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation='none', pad_type=pad_type)]
-        self.model = nn.Sequential(*model)
-
-    def forward(self, x):
-        residual = x
-        out = self.model(x)
-        out += residual
-        return out
-
-
-class Conv2dBlock_my(nn.Module):
-    def __init__(self, input_dim, output_dim, kernel_size, stride,
-                 padding=0, norm='none', activation='relu', pad_type='zero'):
-        super(Conv2dBlock_my, self).__init__()
-        self.use_bias = True
-        # initialize padding
-        if pad_type == 'reflect':
-            self.pad = nn.ReflectionPad2d(padding)
-        elif pad_type == 'replicate':
-            self.pad = nn.ReplicationPad2d(padding)
-        elif pad_type == 'zero':
-            self.pad = nn.ZeroPad2d(padding)
-        else:
-            assert 0, "Unsupported padding type: {}".format(pad_type)
-
-        # initialize normalization
-        norm_dim = output_dim
-        if norm == 'bn':
-            self.norm = nn.BatchNorm2d(norm_dim)
-        elif norm == 'in':
-            # self.norm = nn.InstanceNorm2d(norm_dim, track_running_stats=True)
-            self.norm = nn.InstanceNorm2d(norm_dim)
-        elif norm == 'ln':
-            self.norm = LayerNorm(norm_dim)
-        elif norm == 'adain':
-            self.norm = AdaptiveInstanceNorm2d(norm_dim)
-        elif norm == 'spade':
-            self.norm = SPADE()
-        elif norm == 'none' or norm == 'sn':
-            self.norm = None
-        else:
-            assert 0, "Unsupported normalization: {}".format(norm)
-
-        # initialize activation
-        if activation == 'relu':
-            self.activation = nn.ReLU(inplace=True)
-        elif activation == 'lrelu':
-            self.activation = nn.LeakyReLU(0.2, inplace=True)
-        elif activation == 'prelu':
-            self.activation = nn.PReLU()
-        elif activation == 'selu':
-            self.activation = nn.SELU(inplace=True)
-        elif activation == 'tanh':
-            self.activation = nn.Tanh()
-        elif activation == 'none':
-            self.activation = None
-        else:
-            assert 0, "Unsupported activation: {}".format(activation)
-
-        # initialize convolution
-        if norm == 'sn':
-            self.conv = SpectralNorm(nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias))
-        else:
-            self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias)
-
-    def forward(self, x):
-        style = x[1]
-        x = x[0]
-        x = self.conv(self.pad(x))
-        if self.norm:
-            x = self.norm([x, style])
-        if self.activation:
-            x = self.activation(x)
-        return x
-
-
-class Conv2dBlock(nn.Module):
-    def __init__(self, input_dim, output_dim, kernel_size, stride,
-                 padding=0, norm='none', activation='relu', pad_type='zero'):
-        super(Conv2dBlock, self).__init__()
-        self.use_bias = True
-        # initialize padding
-        if pad_type == 'reflect':
-            self.pad = nn.ReflectionPad2d(padding)
-        elif pad_type == 'replicate':
-            self.pad = nn.ReplicationPad2d(padding)
-        elif pad_type == 'zero':
-            self.pad = nn.ZeroPad2d(padding)
-        else:
-            assert 0, "Unsupported padding type: {}".format(pad_type)
-
-        # initialize normalization
-        norm_dim = output_dim
-        if norm == 'bn':
-            self.norm = nn.BatchNorm2d(norm_dim)
-        elif norm == 'in':
-            # self.norm = nn.InstanceNorm2d(norm_dim, track_running_stats=True)
-            self.norm = nn.InstanceNorm2d(norm_dim)
-        elif norm == 'ln':
-            self.norm = LayerNorm(norm_dim)
-        elif norm == 'adain':
-            self.norm = AdaptiveInstanceNorm2d(norm_dim)
-        elif norm == 'none' or norm == 'sn':
-            self.norm = None
-        else:
-            assert 0, "Unsupported normalization: {}".format(norm)
-
-        # initialize activation
-        if activation == 'relu':
-            self.activation = nn.ReLU(inplace=True)
-        elif activation == 'lrelu':
-            self.activation = nn.LeakyReLU(0.2, inplace=True)
-        elif activation == 'prelu':
-            self.activation = nn.PReLU()
-        elif activation == 'selu':
-            self.activation = nn.SELU(inplace=True)
-        elif activation == 'tanh':
-            self.activation = nn.Tanh()
-        elif activation == 'none':
-            self.activation = None
-        else:
-            assert 0, "Unsupported activation: {}".format(activation)
-
-        # initialize convolution
-        if norm == 'sn':
-            self.conv = SpectralNorm(nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias))
-        else:
-            self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias)
-
-    def forward(self, x):
-        x = self.conv(self.pad(x))
-        if self.norm:
-            x = self.norm(x)
-        if self.activation:
-            x = self.activation(x)
-        return x
-
-
-class LinearBlock(nn.Module):
-    def __init__(self, input_dim, output_dim, norm='none', activation='relu'):
-        super(LinearBlock, self).__init__()
-        use_bias = True
-        # initialize fully connected layer
-        if norm == 'sn':
-            self.fc = SpectralNorm(nn.Linear(input_dim, output_dim, bias=use_bias))
-        else:
-            self.fc = nn.Linear(input_dim, output_dim, bias=use_bias)
-
-        # initialize normalization
-        norm_dim = output_dim
-        if norm == 'bn':
-            self.norm = nn.BatchNorm1d(norm_dim)
-        elif norm == 'in':
-            self.norm = nn.InstanceNorm1d(norm_dim)
-        elif norm == 'ln':
-            self.norm = LayerNorm(norm_dim)
-        elif norm == 'none' or norm == 'sn':
-            self.norm = None
-        else:
-            assert 0, "Unsupported normalization: {}".format(norm)
-
-        # initialize activation
-        if activation == 'relu':
-            self.activation = nn.ReLU(inplace=True)
-        elif activation == 'lrelu':
-            self.activation = nn.LeakyReLU(0.2, inplace=True)
-        elif activation == 'prelu':
-            self.activation = nn.PReLU()
-        elif activation == 'selu':
-            self.activation = nn.SELU(inplace=True)
-        elif activation == 'tanh':
-            self.activation = nn.Tanh()
-        elif activation == 'none':
-            self.activation = None
-        else:
-            assert 0, "Unsupported activation: {}".format(activation)
-
-    def forward(self, x):
-        out = self.fc(x)
-        if self.norm:
-            out = self.norm(out)
-        if self.activation:
-            out = self.activation(out)
-        return out
-
-
-##################################################################################
-# Normalization layers
-##################################################################################
-class SPADE(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        style = x[1]
-        x = x[0]
-        # Part 1. generate parameter-free normalized activations
-        x_mean = torch.mean(x, (0, 2, 3), keepdim=True)
-        x_var = torch.var(x, (0, 2, 3), keepdim=True)
-        normalized = (x - x_mean) / (x_var + 1e-6)
-
-        # Part 2. produce scaling and bias conditioned on semantic map
-        gamma, beta = torch.split(style, int(style.size(1) / 2), 1)
-        # apply scale and bias
-        out = normalized * (1 + gamma) + beta
-
-        return out
-
-
-class AdaptiveInstanceNorm2d(nn.Module):
-    def __init__(self, num_features, eps=1e-5, momentum=0.1):
-        super(AdaptiveInstanceNorm2d, self).__init__()
-        self.num_features = num_features
-        self.eps = eps
-        self.momentum = momentum
-        # weight and bias are dynamically assigned
-        self.weight = None
-        self.bias = None
-        # just dummy buffers, not used
-        self.register_buffer('running_mean', torch.zeros(num_features))
-        self.register_buffer('running_var', torch.ones(num_features))
-
-    def forward(self, x):
-        style = x[1]
-        self.weight, self.bias = torch.split(style, int(style.shape[1] / 2), 1)
-        x = x[0]
-        b, c = x.size(0), x.size(1)
-        running_mean = self.running_mean.repeat(b)
-        running_var = self.running_var.repeat(b)
-
-        # Apply instance norm
-        x_reshaped = x.contiguous().view(1, b * c, *x.size()[2:])
-
-        out = F.batch_norm(
-            x_reshaped, running_mean, running_var, self.weight, self.bias,
-            True, self.momentum, self.eps)
-
-        return out.view(b, c, *x.size()[2:])
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(' + str(self.num_features) + ')'
-
-
-class LayerNorm(nn.Module):
-    def __init__(self, num_features, eps=1e-5, affine=True):
-        super(LayerNorm, self).__init__()
-        self.num_features = num_features
-        self.affine = affine
-        self.eps = eps
-
-        if self.affine:
-            self.gamma = nn.Parameter(torch.Tensor(num_features).uniform_())
-            self.beta = nn.Parameter(torch.zeros(num_features))
-
-    def forward(self, x):
-        shape = [-1] + [1] * (x.dim() - 1)
-        # print(x.size())
-        if x.size(0) == 1:
-            # These two lines run much faster in pytorch 0.4 than the two lines listed below.
-            mean = x.view(-1).mean().view(*shape)
-            std = x.view(-1).std().view(*shape)
-        else:
-            mean = x.view(x.size(0), -1).mean(1).view(*shape)
-            std = x.view(x.size(0), -1).std(1).view(*shape)
-
-        x = (x - mean) / (std + self.eps)
-
-        if self.affine:
-            shape = [1, -1] + [1] * (x.dim() - 2)
-            x = x * self.gamma.view(*shape) + self.beta.view(*shape)
-        return x
-
-
-def l2normalize(v, eps=1e-12):
-    return v / (v.norm() + eps)
-
-
-class SpectralNorm(nn.Module):
-    """
-    Based on the paper "Spectral Normalization for Generative Adversarial Networks" by Takeru Miyato, Toshiki Kataoka, Masanori Koyama, Yuichi Yoshida
-    and the Pytorch implementation https://github.com/christiancosgrove/pytorch-spectral-normalization-gan
-    """
-
-    def __init__(self, module, name='weight', power_iterations=1):
-        super(SpectralNorm, self).__init__()
-        self.module = module
-        self.name = name
-        self.power_iterations = power_iterations
-        if not self._made_params():
-            self._make_params()
-
-    def _update_u_v(self):
-        u = getattr(self.module, self.name + "_u")
-        v = getattr(self.module, self.name + "_v")
-        w = getattr(self.module, self.name + "_bar")
-
-        height = w.data.shape[0]
-        for _ in range(self.power_iterations):
-            v.data = l2normalize(torch.mv(torch.t(w.view(height, -1).data), u.data))
-            u.data = l2normalize(torch.mv(w.view(height, -1).data, v.data))
-
-        # sigma = torch.dot(u.data, torch.mv(w.view(height,-1).data, v.data))
-        sigma = u.dot(w.view(height, -1).mv(v))
-        setattr(self.module, self.name, w / sigma.expand_as(w))
-
-    def _made_params(self):
-        try:
-            u = getattr(self.module, self.name + "_u")
-            v = getattr(self.module, self.name + "_v")
-            w = getattr(self.module, self.name + "_bar")
-            return True
-        except AttributeError:
-            return False
-
-    def _make_params(self):
-        w = getattr(self.module, self.name)
-
-        height = w.data.shape[0]
-        width = w.view(height, -1).data.shape[1]
-
-        u = nn.Parameter(w.data.new(height).normal_(0, 1), requires_grad=False)
-        v = nn.Parameter(w.data.new(width).normal_(0, 1), requires_grad=False)
-        u.data = l2normalize(u.data)
-        v.data = l2normalize(v.data)
-        w_bar = nn.Parameter(w.data)
-
-        del self.module._parameters[self.name]
-
-        self.module.register_parameter(self.name + "_u", u)
-        self.module.register_parameter(self.name + "_v", v)
-        self.module.register_parameter(self.name + "_bar", w_bar)
-
-    def forward(self, *args):
-        self._update_u_v()
-        return self.module.forward(*args)
-
-
-def get_norm_layer(norm_type='batch'):
-    """Get the normalization layer for the networks"""
-    if norm_type == 'batch':
-        norm_layer = functools.partial(nn.BatchNorm2d, momentum=0.1, affine=True)
-    elif norm_type == 'instance':
-        norm_layer = functools.partial(nn.InstanceNorm2d, affine=True)
-    elif norm_type == 'adain':
-        norm_layer = functools.partial(ADAIN)
-    elif norm_type == 'spade':
-        norm_layer = functools.partial(SPADE, config_text='spadeinstance3x3')
-    elif norm_type == 'none':
-        norm_layer = None
-    else:
-        raise NotImplementedError('normalization layer [%s] is not found' % norm_type)
-
-    if norm_type != 'none':
-        norm_layer.__name__ = norm_type
-
-    return norm_layer
 
 def get_nonlinearity_layer(activation_type='PReLU'):
     """Get the activation layer for the networks"""
@@ -905,13 +572,15 @@ def coord_conv(input_nc, output_nc, use_spect=False, use_coord=False, with_r=Fal
         return spectral_norm(nn.Conv2d(input_nc, output_nc, **kwargs), use_spect)
 
 
+#编码器块：输入通道数、输出通道数、归一化层、非线性激活层
 class EncoderBlock(nn.Module):
     def __init__(self, input_nc, output_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(),
                  use_spect=False, use_coord=False):
         super(EncoderBlock, self).__init__()
 
-
+        # 5*5->2*2   4*4->2*2
         kwargs_down = {'kernel_size': 4, 'stride': 2, 'padding': 1}
+        # 不改变H*W
         kwargs_fine = {'kernel_size': 3, 'stride': 1, 'padding': 1}
 
         conv1 = coord_conv(input_nc,  output_nc, use_spect, use_coord, **kwargs_down)

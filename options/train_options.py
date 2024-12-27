@@ -12,7 +12,7 @@ class TrainOptions(BaseOptions):
 
         self.parser.add_argument('--epoch_count', type=int, default=131, help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
         self.parser.add_argument('--which_epoch', type=str, default='130', help='which epoch to load? set to latest to use latest cached model')
-        self.parser.add_argument('--continue_train', default=True, help='continue training: load the latest model')
+        self.parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
 
 
 

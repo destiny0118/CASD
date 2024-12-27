@@ -98,6 +98,10 @@ python train.py   --gpu_ids 0
 
 ```
 
+```angular2html
+python train.py   --gpu_ids 0  --print_freq 100 --batchSize 1 --nThreads 0
+```
+
 The models are save in `./checkpoints`. 
 
 ### Testing
