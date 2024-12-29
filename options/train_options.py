@@ -10,8 +10,8 @@ class TrainOptions(BaseOptions):
                                  help='frequency of saving checkpoints at the end of epochs')
         self.parser.add_argument('--display_freq', type=int, default=1000, help='frequency of showing training results on screen')
 
-        self.parser.add_argument('--epoch_count', type=int, default=131, help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
-        self.parser.add_argument('--which_epoch', type=str, default='130', help='which epoch to load? set to latest to use latest cached model')
+        self.parser.add_argument('--epoch_count', type=int, default=421, help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
+        self.parser.add_argument('--which_epoch', type=str, default='420', help='which epoch to load? set to latest to use latest cached model')
         self.parser.add_argument('--continue_train', default=True, help='continue training: load the latest model')
 
 

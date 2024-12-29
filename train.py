@@ -10,9 +10,11 @@ import wandb
 
 # os.environ["http_proxy"] = "http://127.0.0.1:7890"
 # os.environ["https_proxy"] = "http://127.0.0.1:7890"
-# use_wandb = True
-# if use_wandb:
-#     run=wandb.init(project='MotionTransfer',notes="CASD",tags=["baseline"], resume=True, anonymous='must')
+
+os.environ["WANDB_MODE"] = "offline"
+use_wandb = True
+if use_wandb:
+    run=wandb.init(project='MotionTransfer',notes="CASD",tags=["baseline"], resume=True, anonymous='must')
 
 
 opt = TrainOptions().parse()
@@ -81,14 +83,14 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_loss[key]=epoch_loss.get(key,0)*opt.batchSize/epoch_iter
 
     visualizer.print_epoch_errors(epoch,opt.niter + opt.niter_decay,epoch_loss, time.time() - epoch_start_time)
-    #
-    # if use_wandb:
-    #     run.log(
-    #         {
-    #             "epoch": epoch,
-    #             "epoch_loss": epoch_loss,
-    #         }
-    #     )
+
+    if use_wandb:
+        run.log(
+            {
+                "epoch": epoch,
+                "epoch_loss": epoch_loss,
+            }
+        )
     # 多少次epoch保存一次模型
     if epoch % opt.save_epoch_freq == 0:
         print('saving the model at the end of epoch %d, iters %d' %(epoch, total_steps))
