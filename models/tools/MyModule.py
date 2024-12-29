@@ -1,6 +1,19 @@
 import torch
 from skimage.exposure import match_histograms
 import numpy as np
+from torch import nn
+
+
+# class EFDM(nn.Module):
+#     def __init__(self):
+#         super(EFDM, self).__init__()
+#         self.f1=exact_feature_distribution_matching()
+#
+#
+#
+#     def forward(self, content,style):
+
+
 
 ## EFDM
 def exact_feature_distribution_matching(content_feat, style_feat):

@@ -11,6 +11,7 @@ from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
 import functools
 
 from models.tools.BasicBlocks import LinearBlock, Conv2dBlock_my, ResBlock, Conv2dBlock
+from models.tools.MyModule import exact_feature_distribution_matching
 from models.tools.functions import get_norm_layer, LayerNorm, AdaptiveInstanceNorm2d, SPADE
 
 
@@ -36,7 +37,12 @@ class ADGen(nn.Module):
     def forward(self, img_A, img_B, sem_B):
         content = self.enc_content(img_A)
         style = self.enc_style(img_B, sem_B)
-        images_recon = self.dec(content, style)
+
+        EFDM={}
+        EFDM['layer1']=exact_feature_distribution_matching(self.enc_content.poseFeatures["layer1"], self.enc_style.personFeatures["layer1"])
+        EFDM['layer2']=exact_feature_distribution_matching(self.enc_content.poseFeatures["layer2"],self.enc_style.personFeatures["layer2"])
+        EFDM['layer3']=exact_feature_distribution_matching(self.enc_content.poseFeatures["layer3"],self.enc_style.personFeatures["layer3"])
+        images_recon = self.dec(content, style,EFDM)
         return images_recon
 
 
@@ -80,6 +86,8 @@ class VggStyleEncoder(nn.Module):
         self.AP = nn.Sequential(*self.AP)
         self.output_dim = dim
 
+        self.personFeatures={}
+
     def get_features(self, image, model, layers=None):
         if layers is None:
             layers = {'0': 'conv1_1', '5': 'conv2_1', '10': 'conv3_1', '19': 'conv4_1'}
@@ -95,11 +103,18 @@ class VggStyleEncoder(nn.Module):
     def texture_enc(self, x):
         sty_fea = self.get_features(x, self.vgg)
         x = self.conv1(x)
+        self.personFeatures['layer1'] = x
         x = torch.cat([x, sty_fea['conv1_1']], dim=1)
+
         x = self.conv2(x)
+        self.personFeatures['layer2'] = x
         x = torch.cat([x, sty_fea['conv2_1']], dim=1)
+
         x = self.conv3(x)
+        self.personFeatures['layer3'] = x
         x = torch.cat([x, sty_fea['conv3_1']], dim=1)
+
+
         x = self.conv4(x)
         x = torch.cat([x, sty_fea['conv4_1']], dim=1)
         x0 = self.model0(x)
@@ -146,7 +161,7 @@ class ContentEncoder(nn.Module):
         self.ngf = ngf
         self.img_f = img_f
         self.block0 = EncoderBlock(30, ngf, norm_layer,
-                                 nonlinearity, use_spect, use_coord)
+                                 nonlinearity, use_spect, use_coord,downSampling=False)
         mult = 1
         for i in range(self.layers-1):
             mult_prev = mult
@@ -159,16 +174,20 @@ class ContentEncoder(nn.Module):
         self.model0 += [norm_layer(128)]
         self.model0 += [nonlinearity]
         self.model0 += [nn.Conv2d(128, 256, 1, 1, 0)]
+        self.model0 += [nn.Conv2d(256, 256, 4, 2, 1)]
         self.model0 = nn.Sequential(*self.model0)
 
         self.poseFeatures={}
 
     def forward(self, x):
         out = self.block0(x)
+        self.poseFeatures['layer1'] = out
         for i in range(self.layers-1):
             model = getattr(self, 'encoder' + str(i))
             out = model(out)
+        self.poseFeatures['layer2'] = out
         out = self.model0(out)
+        self.poseFeatures['layer3'] = out
         return out
 
 
@@ -196,22 +215,24 @@ class MyDecoder(nn.Module):
         super(MyDecoder,self).__init__()
 
         self.n_upsample = n_upsample
-        self.model1=[]
+        # self.model1=[]
         for i in range(n_upsample):
-            # block= [nn.Upsample(scale_factor=2),
-            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
-            # block = nn.Sequential(*block)
-            # setattr(self, 'decoder' + str(i), block)
-
-            self.model1 += [nn.Upsample(scale_factor=2),
+            block= [nn.Upsample(scale_factor=2),
                             Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            block = nn.Sequential(*block)
+            setattr(self, 'decoder' + str(i), block)
+
+            # self.model1 += [nn.Upsample(scale_factor=2),
+            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
-        self.model1 = nn.Sequential(*self.model1)
-    def forward(self, x):
-        # for i in range(self.n_upsample):
-        #     block = getattr(self, 'decoder' + str(i))
-        #     x=block(x)
-        x=self.model1(x)
+        # self.model1 = nn.Sequential(*self.model1)
+    def forward(self, x,EFDM):
+        for i in range(self.n_upsample):
+            x=x+EFDM['layer'+str(3-i)]
+            block = getattr(self, 'decoder' + str(i))
+            x=block(x)
+        x=x+EFDM['layer1']
+        # x=self.model1(x)
         return x
 
 
@@ -293,7 +314,7 @@ class Decoder(nn.Module):
         self.FFN4_1 = FFN(256)
         self.up = nn.Upsample(scale_factor=2)
 
-    def forward(self, x, style):
+    def forward(self, x, style,EFDM):
         # fusion module
         style_fusion = self.fc(style.view(style.size(0), -1))
         adain_params = self.mlp(style_fusion)
@@ -321,7 +342,7 @@ class Decoder(nn.Module):
         x = self.model0_5([x, x_])
         x = self.model0_6([x, x_])
         x = self.model0_7([x, x_])
-        x = self.model1(x)
+        x = self.model1(x,EFDM)
         return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
 
     def styleatt(self, x, x_0, style, gamma1, gamma2, gamma3, gamma_style_sa, value_conv_sa, ln_style, ln_pose,
@@ -575,7 +596,7 @@ def coord_conv(input_nc, output_nc, use_spect=False, use_coord=False, with_r=Fal
 #编码器块：输入通道数、输出通道数、归一化层、非线性激活层
 class EncoderBlock(nn.Module):
     def __init__(self, input_nc, output_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(),
-                 use_spect=False, use_coord=False):
+                 use_spect=False, use_coord=False,downSampling=True):
         super(EncoderBlock, self).__init__()
 
         # 5*5->2*2   4*4->2*2
@@ -583,7 +604,10 @@ class EncoderBlock(nn.Module):
         # 不改变H*W
         kwargs_fine = {'kernel_size': 3, 'stride': 1, 'padding': 1}
 
-        conv1 = coord_conv(input_nc,  output_nc, use_spect, use_coord, **kwargs_down)
+        if downSampling:
+            conv1 = coord_conv(input_nc,  output_nc, use_spect, use_coord, **kwargs_down)
+        else:
+            conv1 = coord_conv(input_nc, output_nc, use_spect, use_coord, **kwargs_fine)
         conv2 = coord_conv(output_nc, output_nc, use_spect, use_coord, **kwargs_fine)
 
         if type(norm_layer) == type(None):
