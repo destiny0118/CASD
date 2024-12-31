@@ -8,6 +8,7 @@ import util.util as util
 import numpy as np
 import torchvision.transforms.functional as F
 
+
 class KeyDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
@@ -41,15 +42,24 @@ class KeyDataset(BaseDataset):
         P1_name, P2_name = self.pairs[index]
         P1_path = os.path.join(self.dir_P, P1_name)
         BP1_path = os.path.join(self.dir_K, P1_name + '.npy')
+        SP1_path = os.path.join('./dataset/fashion/train_SP', P1_name[:-4] + '.png.npz')
 
         P2_path = os.path.join(self.dir_P, P2_name)
         BP2_path = os.path.join(self.dir_K, P2_name + '.npy')
+        SP2_path = os.path.join('./dataset/fashion/train_SP', P2_name[:-4] + '.png.npz')
 
         P1_img = Image.open(P1_path).convert('RGB')
         P2_img = Image.open(P2_path).convert('RGB')
 
         BP1_img = np.load(BP1_path)
         BP2_img = np.load(BP2_path)
+
+        SP1_img_tmp = np.load(SP1_path)
+        SP2_img_tmp = np.load(SP2_path)
+        # print(SP1_img_tmp.keys())
+
+        SP1_img_tmp = SP1_img_tmp['data'].astype('float32')
+        SP2_img_tmp = SP2_img_tmp['data'].astype('float32')
 
         if self.use_BPD:
             BPD1_img = util.draw_dis_from_map(BP1_img)[0]
@@ -98,7 +108,6 @@ class KeyDataset(BaseDataset):
                 BPD2 = BPD2.transpose(2, 0)
                 BPD2 = BPD2.transpose(2, 1)
 
-
         SP1_name = self.split_name_sementic3(P1_name, 'semantic_merge3')
         SP2_name = self.split_name_sementic3(P2_name, 'semantic_merge3')
         SP1_path = os.path.join(self.dir_SP, SP1_name)
@@ -135,6 +144,11 @@ class KeyDataset(BaseDataset):
         SP2[6] = SP2_20[14] + SP2_20[15]
         SP2[7] = SP2_20[8] + SP2_20[16] + SP2_20[17] + SP2_20[18] + SP2_20[19]
 
+        if not np.all(SP1_img_tmp == SP1):
+            print(SP1_path)
+
+        if not np.all(SP2_img_tmp == SP2):
+            print(SP2_path)
 
         if self.use_BPD:
             return {'P1': P1, 'BP1': BP1, 'SP1': SP1, 'BPD1': BPD1,
@@ -154,7 +168,6 @@ class KeyDataset(BaseDataset):
     def name(self):
         return 'KeyDataset'
 
-
     def split_name_sementic3(self, str, type):
         list = []
         list.append(type)
@@ -164,4 +177,3 @@ class KeyDataset(BaseDataset):
         for path in list:
             head = os.path.join(head, path)
         return head
-
