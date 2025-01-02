@@ -1,5 +1,8 @@
 dataset/
 checkpoints/
 options/__pycache__
+models/__pycache__
+util/__pycache__
 results
 util/web
+.idea
