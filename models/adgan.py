@@ -409,7 +409,7 @@ class TransferModel(BaseModel):
 
         return ret_errors
 
-    def get_current_visuals(self):
+    def get_current_image(self):
         height, width = self.input_P1.size(2), self.input_P1.size(3)
         input_P1 = util.tensor2im(self.input_P1.data)
         input_P2 = util.tensor2im(self.input_P2.data)
@@ -417,37 +417,41 @@ class TransferModel(BaseModel):
         input_BP1 = util.draw_pose_from_map(self.input_BP1.data)[0]
         input_BP2 = util.draw_pose_from_map(self.input_BP2.data)[0]
 
-
         if self.use_BPD:
             input_BPD1 = util.draw_dis_from_map(self.input_BP1.data)[1]
-            input_BPD1 = (np.repeat(np.expand_dims(input_BPD1, -1), 3, -1)*255).astype('uint8')
+            input_BPD1 = (np.repeat(np.expand_dims(input_BPD1, -1), 3, -1) * 255).astype('uint8')
             input_BPD2 = util.draw_dis_from_map(self.input_BP2.data)[1]
-            input_BPD2 = (np.repeat(np.expand_dims(input_BPD2, -1), 3, -1)*255).astype('uint8')
-
+            input_BPD2 = (np.repeat(np.expand_dims(input_BPD2, -1), 3, -1) * 255).astype('uint8')
 
         fake_p2 = util.tensor2im(self.fake_p2.data)
-        
+
         if self.use_BPD:
-            vis = np.zeros((height, width*7, 3)).astype(np.uint8) #h, w, c
+            vis = np.zeros((height, width * 7, 3)).astype(np.uint8)  # h, w, c
+            # 参考人物图像，人物姿势，热点图   真实人物图像，姿势，热点图 生成图像
             vis[:, :width, :] = input_P1
-            vis[:, width:width*2, :] = input_BP1
-            vis[:, width*2:width*3, :] = input_BPD1
-            vis[:, width*3:width*4, :] = input_P2
-            vis[:, width*4:width*5, :] = input_BP2
-            vis[:, width*5:width*6, :] = input_BPD2
-            vis[:, width*6:width*7, :] = fake_p2
+            vis[:, width:width * 2, :] = input_BP1
+            vis[:, width * 2:width * 3, :] = input_BPD1
+
+            vis[:, width * 3:width * 4, :] = input_P2
+            vis[:, width * 4:width * 5, :] = input_BP2
+            vis[:, width * 5:width * 6, :] = input_BPD2
+
+            vis[:, width * 6:width * 7, :] = fake_p2
         else:
-            vis = np.zeros((height, width*5, 3)).astype(np.uint8) #h, w, c
+            vis = np.zeros((height, width * 5, 3)).astype(np.uint8)  # h, w, c
             vis[:, :width, :] = input_P1
-            vis[:, width:width*2, :] = input_BP1
-            vis[:, width*2:width*3, :] = input_P2
-            vis[:, width*3:width*4, :] = input_BP2
-            vis[:, width*4:, :] = fake_p2
+            vis[:, width:width * 2, :] = input_BP1
+            vis[:, width * 2:width * 3, :] = input_P2
+            vis[:, width * 3:width * 4, :] = input_BP2
+            vis[:, width * 4:, :] = fake_p2
 
         ret_visuals = OrderedDict([('vis', vis)])
 
-        return ret_visuals
+        return ret_visuals, input_P2, fake_p2
 
+    def get_current_visuals(self):
+        ret_visuals, input_P2, fake_p2 = self.get_current_image()
+        return ret_visuals
 
     def save(self, label):
         self.save_network(self.netG,  'netG',  label, self.gpu_ids)

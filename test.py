@@ -5,6 +5,7 @@ from models.models import create_model
 from util.visualizer import Visualizer
 from util import html
 import time
+from tqdm import tqdm
 
 opt = TestOptions().parse()
 opt.nThreads = 1   # test code only supports nThreads = 1
@@ -21,8 +22,6 @@ web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.whic
 
 webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch))
 
-print(opt.how_many)
-print(len(dataset))
 
 model = model.eval()
 print(model.training)
@@ -30,19 +29,24 @@ print(model.training)
 opt.how_many = 999999
 # test
 for i, data in enumerate(dataset):
-    print(' process %d/%d img ..'%(i,opt.how_many))
-    if i >= opt.how_many:
-        break
-    model.set_input(data)
-    startTime = time.time()
-    model.test()
-    endTime = time.time()
-    print(endTime-startTime)
-    visuals = model.get_current_visuals()
-    img_path = model.get_image_paths()
-    img_path = [img_path]
-    print(img_path)
-    visualizer.save_images(webpage, visuals, img_path)
+    with tqdm(total=len(dataset),desc=f'process img',unit='img',position=0) as pbar:
+    # print(' process %d/%d img ..'%(i,len(dataset)))
+        if i >= opt.how_many:
+            break
+        model.set_input(data)
+        startTime = time.time()
+        model.test()
+        endTime = time.time()
+        # print(endTime-startTime)
+        # visuals = model.get_current_visuals()
+        visuals, input_P2, fake_p2 = model.get_current_image()
+        img_path = model.get_image_paths()
+        # img_path = [img_path]
+        # print(img_path)
+        visualizer.save_images(webpage, visuals, img_path,fake_p2)
+        pbar.update(i)
+
+        pbar.set_postfix({'img_path': img_path})
 
 webpage.save()
 

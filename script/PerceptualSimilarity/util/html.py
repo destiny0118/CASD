@@ -4,17 +4,16 @@ import os
 
 
 class HTML:
-    def __init__(self, web_dir, title, reflesh=0):
+    def __init__(self, web_dir, title, image_subdir='', reflesh=0):
         self.title = title
         self.web_dir = web_dir
-        self.img_dir = os.path.join(self.web_dir, 'images')
-        self.generate_dir=os.path.join(self.web_dir,'generate')
+        # self.img_dir = os.path.join(self.web_dir, )
+        self.img_subdir = image_subdir
+        self.img_dir = os.path.join(self.web_dir, image_subdir)
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
         if not os.path.exists(self.img_dir):
             os.makedirs(self.img_dir)
-        if not os.path.exists(self.generate_dir):
-            os.makedirs(self.generate_dir)
         # print(self.img_dir)
 
         self.doc = dominate.document(title=title)
@@ -24,8 +23,7 @@ class HTML:
 
     def get_image_dir(self):
         return self.img_dir
-    def get_generate_dir(self):
-        return self.generate_dir
+
     def add_header(self, str):
         with self.doc:
             h3(str)
@@ -41,13 +39,13 @@ class HTML:
                 for im, txt, link in zip(ims, txts, links):
                     with td(style="word-wrap: break-word;", halign="center", valign="top"):
                         with p():
-                            with a(href=os.path.join('images', link)):
-                                img(style="width:%dpx" % width, src=os.path.join('images', im))
+                            with a(href=os.path.join(link)):
+                                img(style="width:%dpx" % width, src=os.path.join(im))
                             br()
                             p(txt)
 
-    def save(self):
-        html_file = '%s/index.html' % self.web_dir
+    def save(self,file='index'):
+        html_file = '%s/%s.html' % (self.web_dir,file)
         f = open(html_file, 'wt')
         f.write(self.doc.render())
         f.close()

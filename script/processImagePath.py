@@ -1,0 +1,1 @@
+distorted_image="fashionMENShirts_Polosid0000113801_2side.jpg___fashionMENShirts_Polosid0000113801_1front.jpg_vis.jpg"

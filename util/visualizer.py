@@ -130,9 +130,10 @@ class Visualizer():
         print(message)
 
     # save image to the disk
-    def save_images(self, webpage, visuals, image_path):
+    def save_images(self, webpage, visuals, image_path, fake_p2, plot_image=True):
         image_dir = webpage.get_image_dir()
-        short_path = ntpath.basename(image_path[0])
+        generate_dir = webpage.get_generate_dir()
+        short_path = ntpath.basename(image_path)
         name = os.path.splitext(short_path)[0]
 
         webpage.add_header(name)
@@ -141,12 +142,18 @@ class Visualizer():
         links = []
 
         for label, image_numpy in visuals.items():
-            image_name = '%s_%s.jpg' % (image_path[0], label)
-            save_path = os.path.join(image_dir, image_name)
-            print(save_path)
-            util.save_image(image_numpy, save_path)
+            # 存储网络训练所需的姿势、人物图像
+            if plot_image:
+                image_name = '%s_%s.jpg' % (image_path, label)
+                save_path = os.path.join(image_dir, image_name)
+                util.save_image(image_numpy, save_path)
 
-            ims.append(image_name)
-            txts.append(label)
-            links.append(image_name)
-        webpage.add_images(ims, txts, links, width=self.win_size)
+            # 存储生成图像
+            generate_name = '%s___%s.jpg' % (image_path, "genearate")
+            save_generate_path = os.path.join(generate_dir, generate_name)
+            util.save_image(fake_p2, save_generate_path)
+
+            # ims.append(image_name)
+            # txts.append(label)
+            # links.append(image_name)
+        # webpage.add_images(ims, txts, links, width=self.win_size)
