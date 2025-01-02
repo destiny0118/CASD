@@ -116,7 +116,7 @@ from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhC
 obtained checkpoints under `./checkpoints/CASD_test`. Modify your data path and launch
 
 ```bash
-python test.py  --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv  --results_dir ./results --name CASD_EFDM --phase test  --batchSize 1  --gpu_ids 0  --which_epoch 430
+python test.py  --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv  --results_dir ./results --name CASD_test --phase test  --batchSize 1  --gpu_ids 0  --which_epoch 500
 ```
 
 The result images are save in `./results`.

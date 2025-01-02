@@ -439,7 +439,7 @@ def preprocess_path_for_deform_task(gt_path, distorted_path):
         image = os.path.basename(distorted_image)
         # image = image.split('_2_')[-1]
         # image = image.split('_vis')[0] + '.jpg'
-        image=image.split('___')[1]
+        image = image.split('___')[1]
         gt_image = os.path.join(gt_path, image)
         if not os.path.isfile(gt_image):
             print(gt_image)
@@ -634,10 +634,10 @@ if __name__ == "__main__":
     print('load LPIPS')
 
     parser = argparse.ArgumentParser(description='script to compute all statistics')
-    parser.add_argument('--gt_path', help='Path to ground truth data', type=str,default='../dataset/fashion/test_resize')
-    parser.add_argument('--distorated_path', help='Path to output data', type=str,default='../results/CASD_test/test_500/generate')
-    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str,default='../results/CASD_test/test_500/generate')
-    parser.add_argument('--name', default='baseline', help='name of the experiment', type=str)
+    parser.add_argument('--gt_path', help='Path to ground truth data', type=str, default='../dataset/fashion/test_resize')
+    parser.add_argument('--distorated_path', help='Path to output data', type=str, default='../results/CASD_test/test_500/generate')
+    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str, default='../results/CASD_test/test_500/generate')
+    parser.add_argument('--name', default='EFDM', help='name of the experiment', type=str)
     parser.add_argument('--calculate_mask', action='store_true')
     args = parser.parse_args()
 
@@ -646,7 +646,6 @@ if __name__ == "__main__":
 
     print('calculate fid metric...')
     fid_score = fid.calculate_from_disk(args.distorated_path, args.gt_path)
-
 
     gt_list, distorated_list = preprocess_path_for_deform_task(args.gt_path, args.distorated_path)
     print('calculate reconstruction metric...')
@@ -667,12 +666,3 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(dic)
     df.to_csv('./eval_results/' + args.name + '.csv', index=True)
-
-
-
-
-
-
-
-
-

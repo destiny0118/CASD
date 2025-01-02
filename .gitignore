@@ -6,3 +6,4 @@ util/__pycache__
 results
 util/web
 .idea
+**/*.pyc
