@@ -5,5 +5,6 @@ models/__pycache__
 util/__pycache__
 results
 util/web
+wandb
 .idea
 **/*.pyc
