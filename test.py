@@ -7,9 +7,11 @@ from util import html
 import time
 from tqdm import tqdm
 
+os.environ["NCCL_DEBUG"] = "INFO"
+
 opt = TestOptions().parse()
-opt.nThreads = 1   # test code only supports nThreads = 1
-opt.batchSize = 1   # test code only supports batchSize = 1
+opt.nThreads = 1  # test code only supports nThreads = 1
+opt.batchSize = 1  # test code only supports batchSize = 1
 opt.serial_batches = True  # no shuffle
 opt.no_flip = True  # no flip
 
@@ -22,15 +24,14 @@ web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.whic
 
 webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch))
 
-
 model = model.eval()
 print(model.training)
 
 opt.how_many = 999999
 # test
 for i, data in enumerate(dataset):
-    with tqdm(total=len(dataset),desc=f'process img',unit='img',position=0) as pbar:
-    # print(' process %d/%d img ..'%(i,len(dataset)))
+    with tqdm(total=len(dataset), desc=f'process img', unit='img', position=0) as pbar:
+        # print(' process %d/%d img ..'%(i,len(dataset)))
         if i >= opt.how_many:
             break
         model.set_input(data)
@@ -43,13 +44,9 @@ for i, data in enumerate(dataset):
         img_path = model.get_image_paths()
         # img_path = [img_path]
         # print(img_path)
-        visualizer.save_images(webpage, visuals, img_path,fake_p2)
+        visualizer.save_images(webpage, visuals, img_path, fake_p2)
         pbar.update(i)
 
         pbar.set_postfix({'img_path': img_path})
 
 webpage.save()
-
-
-
-

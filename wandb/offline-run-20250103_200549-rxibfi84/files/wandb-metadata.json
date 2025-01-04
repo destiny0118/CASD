@@ -1,0 +1,151 @@
+{
+    "os": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-debian-bullseye-sid",
+    "python": "3.6.13",
+    "heartbeatAt": "2025-01-03T12:05:50.086894",
+    "startedAt": "2025-01-03T12:05:49.776615",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--gpu_ids",
+        "0"
+    ],
+    "state": "running",
+    "program": "train.py",
+    "codePathLocal": "train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "https://github.com/destiny0118/CASD.git",
+        "commit": "fb87d9224b791094b4af4e5e1f1403dde9a3e78f"
+    },
+    "email": "1632508233@qq.com",
+    "root": "/home/destiny/CASD",
+    "host": "DESKTOP-2JF92FG",
+    "username": "destiny",
+    "executable": "/home/destiny/miniconda3/envs/CASD/bin/python",
+    "cpu_count": 10,
+    "cpu_count_logical": 20,
+    "cpu_freq": {
+        "current": 2394.4530000000004,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2394.453,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 250.92389297485352,
+            "used": 100.03147506713867
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 3090",
+            "memory_total": 25769803776
+        }
+    ],
+    "memory": {
+        "total": 23.471046447753906
+    }
+}

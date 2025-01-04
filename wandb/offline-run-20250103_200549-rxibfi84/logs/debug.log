@@ -1,0 +1,24 @@
+2025-01-03 20:05:49,780 INFO    MainThread:910 [wandb_setup.py:_flush():76] Current SDK version is 0.15.11
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Configure stats pid to 910
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Loading settings from /home/destiny/.config/wandb/settings
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Loading settings from /home/destiny/CASD/wandb/settings
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'mode': 'offline'}
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'train.py', 'program_abspath': '/home/destiny/CASD/train.py', 'program': 'train.py'}
+2025-01-03 20:05:49,781 INFO    MainThread:910 [wandb_init.py:_log_setup():528] Logging user logs to /home/destiny/CASD/wandb/offline-run-20250103_200549-rxibfi84/logs/debug.log
+2025-01-03 20:05:49,782 INFO    MainThread:910 [wandb_init.py:_log_setup():529] Logging internal logs to /home/destiny/CASD/wandb/offline-run-20250103_200549-rxibfi84/logs/debug-internal.log
+2025-01-03 20:05:49,782 INFO    MainThread:910 [wandb_init.py:init():568] calling init triggers
+2025-01-03 20:05:49,782 INFO    MainThread:910 [wandb_init.py:init():576] wandb.init called with sweep_config: {}
+config: {}
+2025-01-03 20:05:49,782 INFO    MainThread:910 [wandb_init.py:init():618] starting backend
+2025-01-03 20:05:49,782 INFO    MainThread:910 [wandb_init.py:init():622] setting up manager
+2025-01-03 20:05:49,787 INFO    MainThread:910 [backend.py:_multiprocessing_setup():107] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-01-03 20:05:49,791 INFO    MainThread:910 [wandb_init.py:init():628] backend started and connected
+2025-01-03 20:05:49,796 INFO    MainThread:910 [wandb_init.py:init():720] updated telemetry
+2025-01-03 20:05:49,818 INFO    MainThread:910 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2025-01-03 20:05:49,828 INFO    MainThread:910 [wandb_init.py:init():804] starting run threads in backend
+2025-01-03 20:05:51,193 INFO    MainThread:910 [wandb_run.py:_console_start():2199] atexit reg
+2025-01-03 20:05:51,194 INFO    MainThread:910 [wandb_run.py:_redirect():2054] redirect: wrap_raw
+2025-01-03 20:05:51,194 INFO    MainThread:910 [wandb_run.py:_redirect():2119] Wrapping output streams.
+2025-01-03 20:05:51,194 INFO    MainThread:910 [wandb_run.py:_redirect():2144] Redirects installed.
+2025-01-03 20:05:51,196 INFO    MainThread:910 [wandb_init.py:init():845] run started, returning control to user process
