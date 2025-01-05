@@ -190,6 +190,7 @@ class FFN(nn.Module):
 class MyDecoder(nn.Module):
     def __init__(self, n_upsample, dim, activ='relu', pad_type='zero'):
         super(MyDecoder,self).__init__()
+        self.model1=[]
         for i in range(n_upsample):
             self.model1 += [nn.Upsample(scale_factor=2),
                             Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
@@ -231,12 +232,13 @@ class Decoder(nn.Module):
         self.model0_7 = [ResBlock_myDFNM(dim, 'spade', activ, pad_type=pad_type)]
         self.model0_7 = nn.Sequential(*self.model0_7)
         # upsampling blocks
+        self.model1 = MyDecoder(n_upsample, dim, activ, pad_type=pad_type)
         for i in range(n_upsample):
             # self.model1 += [nn.Upsample(scale_factor=2),
             #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
         # self.model1 = nn.Sequential(*self.model1)
-        self.model1 = MyDecoder(n_upsample, dim, activ, pad_type=pad_type)
+
 
         # use reflection padding in the last conv layer
         self.model2 += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
