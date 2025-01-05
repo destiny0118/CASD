@@ -28,12 +28,17 @@ class TransferModel(BaseModel):
         self.SP_input_nc = opt.SP_input_nc
         self.input_P1_set = self.Tensor(nb, opt.P_input_nc, size[0], size[1])
         self.input_BP1_set = self.Tensor(nb, opt.BP_input_nc, size[0], size[1])
+        self.input_SP1_set = self.Tensor(nb, opt.SP_input_nc, size[0], size[1])
+
         self.input_P2_set = self.Tensor(nb, opt.P_input_nc, size[0], size[1])
         self.input_BP2_set = self.Tensor(nb, opt.BP_input_nc, size[0], size[1])
-        self.input_SP1_set = self.Tensor(nb, opt.SP_input_nc, size[0], size[1])
         self.input_SP2_set = self.Tensor(nb, opt.SP_input_nc, size[0], size[1])
+
+        self.input_P3_set = self.Tensor(nb, opt.P_input_nc, size[0], size[1])
+        self.input_BP3_set = self.Tensor(nb, opt.BP_input_nc, size[0], size[1])
+        self.input_SP3_set = self.Tensor(nb, opt.SP_input_nc, size[0], size[1])
         if self.use_BPD:
-            self.input_BPD1_set = self.Tensor(nb, opt.BPD_input_nc, size[0], size[1])
+            # self.input_BPD1_set = self.Tensor(nb, opt.BPD_input_nc, size[0], size[1])
             self.input_BPD2_set = self.Tensor(nb, opt.BPD_input_nc, size[0], size[1])
 
 
@@ -141,19 +146,25 @@ class TransferModel(BaseModel):
     def set_input(self, input):
         input_P1, input_BP1 = input['P1'], input['BP1']
         input_P2, input_BP2 = input['P2'], input['BP2']
+        input_P3, input_BP3 = input['P3'], input['BP3']
 
         self.input_P1_set.resize_(input_P1.size()).copy_(input_P1)
         self.input_BP1_set.resize_(input_BP1.size()).copy_(input_BP1)
         self.input_P2_set.resize_(input_P2.size()).copy_(input_P2)
         self.input_BP2_set.resize_(input_BP2.size()).copy_(input_BP2)
+        self.input_P3_set.resize_(input_P2.size()).copy_(input_P2)
+        self.input_BP3_set.resize_(input_BP2.size()).copy_(input_BP2)
         
         if self.use_BPD:
-            input_BPD1, input_BPD2 = input['BPD1'], input['BPD2']
-            self.input_BPD1_set.resize_(input_BPD1.size()).copy_(input_BPD1)
+            # input_BPD1, input_BPD2 = input['BPD1'], input['BPD2']
+            input_BPD2 =  input['BPD2']
+            # self.input_BPD1_set.resize_(input_BPD1.size()).copy_(input_BPD1)
             self.input_BPD2_set.resize_(input_BPD2.size()).copy_(input_BPD2)
             
         input_SP1 = input['SP1']
         self.input_SP1_set.resize_(input_SP1.size()).copy_(input_SP1)
+        input_SP3 = input['SP3']
+        self.input_SP3_set.resize_(input_SP3.size()).copy_(input_SP3)
         if self.use_AMCE:
             input_SP2 = input['SP2']
             self.input_SP2_set.resize_(input_SP2.size()).copy_(input_SP2)
@@ -169,18 +180,22 @@ class TransferModel(BaseModel):
 
         self.input_P2 = Variable(self.input_P2_set)
         self.input_BP2 = Variable(self.input_BP2_set)
+
+        self.input_P3 = Variable(self.input_P3_set)
+        self.input_BP3 = Variable(self.input_BP3_set)
         
         if self.use_BPD:
-            self.input_BPD1 = Variable(self.input_BPD1_set)
+            # self.input_BPD1 = Variable(self.input_BPD1_set)
             self.input_BPD2 = Variable(self.input_BPD2_set)
             
         self.input_SP1 = Variable(self.input_SP1_set)
         self.input_SP2 = Variable(self.input_SP2_set)
+        self.input_SP3 = Variable(self.input_SP3_set)
 
         if self.use_BPD:
-            self.fake_p2, self.fake_sp2 = self.netG(torch.cat([self.input_BP2, self.input_BPD2], 1), self.input_P1, self.input_SP1)
+            self.fake_p2, self.fake_sp2 = self.netG(torch.cat([self.input_BP2, self.input_BPD2], 1), self.input_P1, self.input_SP1,self.input_P3, self.input_SP3)
         else:
-            self.fake_p2, self.fake_sp2 = self.netG(self.input_BP2, self.input_P1, self.input_SP1)
+            self.fake_p2, self.fake_sp2 = self.netG(self.input_BP2, self.input_P1, self.input_SP1,self.input_P3, self.input_SP3)
 
 
     def test(self):
@@ -191,7 +206,7 @@ class TransferModel(BaseModel):
         self.input_BP2 = Variable(self.input_BP2_set)
         
         if self.use_BPD:
-            self.input_BPD1 = Variable(self.input_BPD1_set)
+            # self.input_BPD1 = Variable(self.input_BPD1_set)
             self.input_BPD2 = Variable(self.input_BPD2_set)
             
         self.input_SP1 = Variable(self.input_SP1_set)

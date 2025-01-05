@@ -8,3 +8,5 @@ util/web
 wandb
 .idea
 **/*.pyc
+README.md
+options/train_options.py

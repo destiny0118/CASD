@@ -30,7 +30,7 @@ class KeyDataset(BaseDataset):
         self.pairs = []
         print('Loading data pairs ...')
         for i in range(self.size):
-            pair = [pairs_file_train.iloc[i]['from'], pairs_file_train.iloc[i]['to']]
+            pair = [pairs_file_train.iloc[i]['from'], pairs_file_train.iloc[i]['to'],pairs_file_train.iloc[i]['from2']]
             self.pairs.append(pair)
 
         print('Loading data pairs finished ...')
@@ -39,26 +39,36 @@ class KeyDataset(BaseDataset):
         if self.opt.phase == 'train':
             index = random.randint(0, self.size - 1)
 
-        P1_name, P2_name = self.pairs[index]
+        P1_name, P2_name,P3_name = self.pairs[index]
+        # style编码，人物图像，人体解析图
         P1_path = os.path.join(self.dir_P, P1_name)
         BP1_path = os.path.join(self.dir_K, P1_name + '.npy')
         SP1_path = os.path.join('./dataset/fashion/semantic_SP', P1_name[:-4] + '.png.npz')
 
+        # content编码，人体关键点BP，关键点距离BPD
         P2_path = os.path.join(self.dir_P, P2_name)
         BP2_path = os.path.join(self.dir_K, P2_name + '.npy')
         SP2_path = os.path.join('./dataset/fashion/semantic_SP', P2_name[:-4] + '.png.npz')
 
+        P3_path = os.path.join(self.dir_P, P3_name)
+        BP3_path = os.path.join(self.dir_K, P3_name + '.npy')
+        SP3_path = os.path.join('./dataset/fashion/semantic_SP', P3_name[:-4] + '.png.npz')
+
         P1_img = Image.open(P1_path).convert('RGB')
         P2_img = Image.open(P2_path).convert('RGB')
+        P3_img = Image.open(P3_path).convert('RGB')
 
         BP1_img = np.load(BP1_path)
         BP2_img = np.load(BP2_path)
+        BP3_img = np.load(BP3_path)
 
         SP1_img_tmp = np.load(SP1_path)
         SP2_img_tmp = np.load(SP2_path)
+        SP3_img_tmp = np.load(SP3_path)
 
         SP1_img = SP1_img_tmp['data'].astype("float32")
         SP2_img = SP2_img_tmp['data'].astype("float32")
+        SP3_img = SP3_img_tmp['data'].astype("float32")
 
         if self.use_BPD:
             BPD1_img = util.draw_dis_from_map(BP1_img)[0]
@@ -73,9 +83,11 @@ class KeyDataset(BaseDataset):
                 # print('fliped ...')
                 P1_img = P1_img.transpose(Image.FLIP_LEFT_RIGHT)
                 P2_img = P2_img.transpose(Image.FLIP_LEFT_RIGHT)
+                P3_img = P3_img.transpose(Image.FLIP_LEFT_RIGHT)
 
                 BP1_img = np.array(BP1_img[:, ::-1, :])
                 BP2_img = np.array(BP2_img[:, ::-1, :])
+                BP3_img = np.array(BP3_img[:, ::-1, :])
 
             BP1 = torch.from_numpy(BP1_img).float()
             BP1 = BP1.transpose(2, 0)
@@ -85,8 +97,14 @@ class KeyDataset(BaseDataset):
             BP2 = BP2.transpose(2, 0)
             BP2 = BP2.transpose(2, 1)
 
+            BP3 = torch.from_numpy(BP3_img).float()
+            BP3 = BP3.transpose(2, 0)
+            BP3 = BP3.transpose(2, 1)
+
+
             P1 = self.transform(P1_img)
             P2 = self.transform(P2_img)
+            P3 = self.transform(P3_img)
         else:
             BP1 = torch.from_numpy(BP1_img).float()
             BP1 = BP1.transpose(2, 0)
@@ -96,8 +114,13 @@ class KeyDataset(BaseDataset):
             BP2 = BP2.transpose(2, 0)
             BP2 = BP2.transpose(2, 1)
 
+            BP3 = torch.from_numpy(BP3_img).float()
+            BP3 = BP3.transpose(2, 0)
+            BP3 = BP3.transpose(2, 1)
+
             P1 = self.transform(P1_img)
             P2 = self.transform(P2_img)
+            P3 = self.transform(P3_img)
             if self.use_BPD:
                 BPD1 = torch.from_numpy(BPD1_img).float()
                 BPD1 = BPD1.transpose(2, 0)
@@ -150,11 +173,13 @@ class KeyDataset(BaseDataset):
         if self.use_BPD:
             return {'P1': P1, 'BP1': BP1, 'SP1': SP1_img, 'BPD1': BPD1,
                     'P2': P2, 'BP2': BP2, 'SP2': SP2_img, 'BPD2': BPD2,
-                    'P1_path': P1_name, 'P2_path': P2_name}
+                    'P3': P3, 'BP3': BP3, 'SP3': SP3_img,
+                    'P1_path': P1_name, 'P2_path': P2_name, 'P3_path': P3_name}
         else:
             return {'P1': P1, 'BP1': BP1, 'SP1': SP1_img,
                     'P2': P2, 'BP2': BP2, 'SP2': SP2_img,
-                    'P1_path': P1_name, 'P2_path': P2_name}
+                    'P3': P3, 'BP3': BP3, 'SP3': SP3_img,
+                    'P1_path': P1_name, 'P2_path': P2_name, 'P3_path': P3_name}
 
     def __len__(self):
         if self.opt.phase == 'train':
