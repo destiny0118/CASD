@@ -6,11 +6,11 @@ from collections import OrderedDict
 import util.util as util
 from util.image_pool import ImagePool
 from .base_model import BaseModel
-from . import networks
+from .tools import networks
 # losses
 from losses.L1_plus_perceptualLoss import L1_plus_perceptualLoss
 from losses.CX_style_loss import CXLoss
-from .vgg_SC import VGG, VGGLoss
+from models.tools.vgg_SC import VGG, VGGLoss
 from losses.lpips.lpips import LPIPS
 
 
@@ -39,24 +39,24 @@ class TransferModel(BaseModel):
 
         input_nc = [opt.P_input_nc, opt.BP_input_nc+opt.BP_input_nc + (opt.BPD_input_nc+opt.BPD_input_nc if self.use_BPD else 0)]
         self.netG = networks.define_G(input_nc, opt.P_input_nc,
-                                        opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids,
-                                        n_downsampling=opt.G_n_downsampling)
+                                      opt.ngf, opt.which_model_netG, opt.norm, not opt.no_dropout, opt.init_type, self.gpu_ids,
+                                      n_downsampling=opt.G_n_downsampling)
 
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             if opt.with_D_PB:
-                self.netD_PB = networks.define_D(opt.P_input_nc+opt.BP_input_nc + (opt.BPD_input_nc if self.use_BPD else 0), opt.ndf,
-                                            opt.which_model_netD,
-                                            opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids,
-                                            not opt.no_dropout_D,
-                                            n_downsampling = opt.D_n_downsampling)
+                self.netD_PB = networks.define_D(opt.P_input_nc + opt.BP_input_nc + (opt.BPD_input_nc if self.use_BPD else 0), opt.ndf,
+                                                 opt.which_model_netD,
+                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids,
+                                                 not opt.no_dropout_D,
+                                                 n_downsampling = opt.D_n_downsampling)
 
             if opt.with_D_PP:
-                self.netD_PP = networks.define_D(opt.P_input_nc+opt.P_input_nc, opt.ndf,
-                                            opt.which_model_netD,
-                                            opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids,
-                                            not opt.no_dropout_D,
-                                            n_downsampling = opt.D_n_downsampling)
+                self.netD_PP = networks.define_D(opt.P_input_nc + opt.P_input_nc, opt.ndf,
+                                                 opt.which_model_netD,
+                                                 opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids,
+                                                 not opt.no_dropout_D,
+                                                 n_downsampling = opt.D_n_downsampling)
 
             if len(opt.gpu_ids) > 1:
                 self.load_VGG(self.netG.module.enc_style.vgg)

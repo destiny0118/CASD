@@ -119,13 +119,14 @@ class Visualizer():
             message += '%s: %.3f ' % (k, v)
         message+='(epoch: %d, iters: %d, time: %.3f) ' % (epoch, i, t)
         print(message)
-        with open(self.log_name, "a") as log_file:
-            log_file.write('%s\n' % message)
+
 
     def print_epoch_errors(self,epoch,total,errors,t):
         message ='End of epoch %d / %d \t Time Taken: %d sec' %(epoch, total,t)+ '\n'
         for k, v in errors.items():
             message += '%s: %.3f ' % (k, v)
+        with open(self.log_name, "a") as log_file:
+            log_file.write('%s\n' % message)
         message+="\n============================================================================================="
         print(message)
 
