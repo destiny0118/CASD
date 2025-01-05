@@ -37,17 +37,19 @@ class ADGen(nn.Module):
         self.dec2 = Decoder(style_dim, mlp_dim, n_downsample, n_res, 256, input_dim,
                            self.SP_input_nc, res_norm='adain', activ=activ, pad_type=pad_type)
 
-        self.img_Dec=MyDecoder(n_downsample,512,int(style_dim / self.SP_input_nc),activ=activ,pad_type=pad_type)
+        self.img_Dec=MyDecoder(n_downsample,512,3,activ=activ,pad_type=pad_type)
 
     def forward(self, img_A, img_B, sem_B,img_B2,sem_B2):
         content = self.enc_content(img_A)
         style = self.enc_style(img_B, sem_B)
         style2=self.enc_style2(img_B2, sem_B2)
-        style_distribution1 = self.dec(content, style)
-        style_distribution2=self.dec2(content, style2)
+        style_distribution1,fake_SP1 = self.dec(content, style)
+        style_distribution2,fake_SP2=self.dec2(content, style2)
+
+        fake_SP = [(a+b)/2 for a, b in zip(fake_SP1, fake_SP2)]
 
         images_recon=self.img_Dec(style_distribution1, style_distribution2)
-        return images_recon
+        return images_recon,fake_SP
 
 
 def calc_mean_std(feat, eps=1e-5):
@@ -332,7 +334,7 @@ class Decoder(nn.Module):
         #输入： 1 * 64 * 256 * 256
         # x = self.model1(x)
         # return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
-        return x
+        return x,[enerrgy_sum3, enerrgy_sum4]
 
     def styleatt(self, x, x_0, style, gamma1, gamma2, gamma3, gamma_style_sa, value_conv_sa, ln_style, ln_pose,
                  ln_pose_0, query_conv, key_conv, value_conv, query_conv_0, ffn1):
