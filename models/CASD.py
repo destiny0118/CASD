@@ -187,6 +187,16 @@ class FFN(nn.Module):
         x = torch.reshape(x, (b, c, h, w))
         return x
 
+class MyDecoder(nn.Module):
+    def __init__(self, n_upsample, dim, activ='relu', pad_type='zero'):
+        super(MyDecoder,self).__init__()
+        for i in range(n_upsample):
+            self.model1 += [nn.Upsample(scale_factor=2),
+                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            dim //= 2
+        self.model1 = nn.Sequential(*self.model1)
+    def forward(self, x):
+        return self.model1(x)
 
 class Decoder(nn.Module):
     def __init__(self, style_dim, mlp_dim, n_upsample, n_res, dim, output_dim, SP_input_nc, res_norm='adain',
@@ -222,10 +232,12 @@ class Decoder(nn.Module):
         self.model0_7 = nn.Sequential(*self.model0_7)
         # upsampling blocks
         for i in range(n_upsample):
-            self.model1 += [nn.Upsample(scale_factor=2),
-                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            # self.model1 += [nn.Upsample(scale_factor=2),
+            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
-        self.model1 = nn.Sequential(*self.model1)
+        # self.model1 = nn.Sequential(*self.model1)
+        self.model1 = MyDecoder(n_upsample, dim, activ, pad_type=pad_type)
+
         # use reflection padding in the last conv layer
         self.model2 += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
         self.model2 = nn.Sequential(*self.model2)
@@ -267,6 +279,7 @@ class Decoder(nn.Module):
         # fusion module
         style_fusion = self.fc(style.view(style.size(0), -1))
         adain_params = self.mlp(style_fusion)
+        # 在通道维度切分指定块数
         adain_params = torch.split(adain_params, int(adain_params.shape[1] / self.n_res), 1)
 
         x_0 = x
@@ -275,6 +288,7 @@ class Decoder(nn.Module):
         x = self.model0_2([x, adain_params[2]])
         x = self.model0_3([x, adain_params[3]])
 
+        # 1*256*64*64   1*8*64*64
         x3, enerrgy_sum3 = self.styleatt(x, x_0, style, self.gamma3_1, self.gamma3_2, self.gamma3_3, \
                                          self.gamma3_style_sa, self.value3_conv_sa, \
                                          self.LN_3_style, self.LN_3_pose, self.LN_3_pose_0, \
@@ -290,7 +304,9 @@ class Decoder(nn.Module):
         x = self.model0_4([x_0, x_])
         x = self.model0_5([x, x_])
         x = self.model0_6([x, x_])
+        # 1*256*64*64
         x = self.model0_7([x, x_])
+        #输入： 1 * 64 * 256 * 256
         x = self.model1(x)
         return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
 

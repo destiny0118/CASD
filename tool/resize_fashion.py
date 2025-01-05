@@ -22,7 +22,7 @@ def resize_dataset(folder, new_folder, new_size = (256, 256), crop_bord=0):
         print('resize %s succefully' % old_name)
 
 
-old_dir = '../dataset/fashion/train'
-root_dir = '../dataset/fashion/train_resize'
+old_dir = './results/PT2/deepf'
+root_dir = './results/PT2/deepf_resize'
 resize_dataset(old_dir, root_dir)
 

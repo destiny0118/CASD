@@ -439,7 +439,8 @@ def preprocess_path_for_deform_task(gt_path, distorted_path):
         image = os.path.basename(distorted_image)
         # image = image.split('_2_')[-1]
         # image = image.split('_vis')[0] + '.jpg'
-        image = image.split('___')[1]
+        # image = image.split('___')[1]
+        image=image[:-4]
         gt_image = os.path.join(gt_path, image)
         if not os.path.isfile(gt_image):
             print(gt_image)
@@ -635,9 +636,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='script to compute all statistics')
     parser.add_argument('--gt_path', help='Path to ground truth data', type=str, default='../dataset/fashion/test_resize')
-    parser.add_argument('--distorated_path', help='Path to output data', type=str, default='../results/CASD_test/test_500/generate')
-    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str, default='../results/CASD_test/test_500/generate')
-    parser.add_argument('--name', default='EFDM', help='name of the experiment', type=str)
+    parser.add_argument('--distorated_path', help='Path to output data', type=str, default='../results/PT2/deepf_resize')
+    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str, default='../dataset/fashion/test_resize')
+    parser.add_argument('--name', default='PT2', help='name of the experiment', type=str)
     parser.add_argument('--calculate_mask', action='store_true')
     args = parser.parse_args()
 
