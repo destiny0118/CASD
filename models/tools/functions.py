@@ -3,6 +3,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+def get_nonlinearity_layer(activation_type='PReLU'):
+    """Get the activation layer for the networks"""
+    if activation_type == 'ReLU':
+        nonlinearity_layer = nn.ReLU()
+    elif activation_type == 'SELU':
+        nonlinearity_layer = nn.SELU()
+    elif activation_type == 'LeakyReLU':
+        nonlinearity_layer = nn.LeakyReLU(0.1)
+    elif activation_type == 'PReLU':
+        nonlinearity_layer = nn.PReLU()
+    else:
+        raise NotImplementedError('activation layer [%s] is not found' % activation_type)
+    return nonlinearity_layer
 
 def get_norm_layer(norm_type='batch'):
     """Get the normalization layer for the networks"""

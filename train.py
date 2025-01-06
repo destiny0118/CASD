@@ -14,7 +14,7 @@ import wandb
 # os.environ["WANDB_MODE"] = "offline"
 # use_wandb = True
 # if use_wandb:
-#     run=wandb.init(project='MotionTransfer',notes="CASD",tags=["baseline"], resume=True, anonymous='must')
+#     run=wandb.init(project='MotionTransfer',notes="CASD_module",tags=["baseline"], resume=True, anonymous='must')
 
 
 opt = TrainOptions().parse()

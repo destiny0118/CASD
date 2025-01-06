@@ -103,7 +103,7 @@ python train.py  --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG C
 ```
 
 ```bash
-python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-multiView-pairs-train.csv --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD --checkpoints_dir ./checkpoints
+python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-multiView-pairs-train.csv --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD_module --checkpoints_dir ./checkpoints
 ```
 
 ```bash

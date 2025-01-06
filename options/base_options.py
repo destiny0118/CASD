@@ -17,7 +17,7 @@ class BaseOptions():
         self.parser.add_argument('--dirSem', default='./dataset/fashion', help='path to semantic images')
         self.parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
 
-        self.parser.add_argument('--which_model_netG', type=str, default='CASD', help='selects model to use for netG')
+        self.parser.add_argument('--which_model_netG', type=str, default='CASD_module', help='selects model to use for netG')
         self.parser.add_argument('--name', type=str, default='CASD_test', help='name of the experiment. It decides where to store samples and models')
         self.parser.add_argument('--fineSize', type=int, default=[256, 256], help='input image size')
         self.parser.add_argument('--pairLst', type=str, default='./dataset/fashion/fashion-resize-pairs-train.csv', help='fashion pairs')
