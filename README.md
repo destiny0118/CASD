@@ -103,11 +103,11 @@ python train.py  --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG C
 ```
 
 ```bash
-python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-multiView-pairs-train.csv --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD_module --checkpoints_dir ./checkpoints
+python train.py  --pairLst ./dataset/fashion/fashion-resize-multiView-pairs-train.csv --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD_module --checkpoints_dir ./checkpoints
 ```
 
 ```bash
-python train.py   --gpu_ids 0 
+python train.py  --gpu_ids 0 --which_model_netG CASD_FreqFusion --batchSize 8 --name CASD_FreqFusion2
 
 ```
 
@@ -122,8 +122,6 @@ obtained checkpoints under `./checkpoints/CASD_test`. Modify your data path and 
 ```bash
 python test.py  --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv  --results_dir ./results --name CASD_test --phase test  --batchSize 1  --gpu_ids 0,0  --which_epoch 1000
 ```
-
-
 
 The result images are save in `./results`.
 

@@ -10,10 +10,8 @@ from torch.nn.parameter import Parameter
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
 import functools
 
-from models.CASD_module.ContentEncoder import ContentEncoder
 from models.tools.BasicBlocks import Conv2dBlock_my, LinearBlock, Conv2dBlock, ResBlock
-from models.tools.EncoderBlock import EncoderBlock
-from models.tools.functions import get_norm_layer, get_nonlinearity_layer
+from models.tools.functions import get_norm_layer
 
 
 # Moddfied with AdINGen
@@ -136,6 +134,39 @@ class VggStyleEncoder(nn.Module):
         return codes_vector.view(bs, -1).unsqueeze(2).unsqueeze(3)
 
 
+class ContentEncoder(nn.Module):
+    def __init__(self, layers=2, ngf=64, img_f=512, use_spect=False, use_coord=False):
+        super(ContentEncoder, self).__init__()
+
+        self.layers = layers
+        norm_layer = get_norm_layer(norm_type='instance')
+        nonlinearity = get_nonlinearity_layer(activation_type='LeakyReLU')
+        self.ngf = ngf
+        self.img_f = img_f
+        self.block0 = EncoderBlock(30, ngf, norm_layer,
+                                   nonlinearity, use_spect, use_coord)
+        mult = 1
+        for i in range(self.layers - 1):
+            mult_prev = mult
+            mult = min(2 ** (i + 1), self.img_f // self.ngf)
+            block = EncoderBlock(self.ngf * mult_prev, self.ngf * mult, norm_layer,
+                                 nonlinearity, use_spect, use_coord)
+            setattr(self, 'encoder' + str(i), block)
+
+        self.model0 = []
+        self.model0 += [norm_layer(128)]
+        self.model0 += [nonlinearity]
+        self.model0 += [nn.Conv2d(128, 256, 1, 1, 0)]
+        self.model0 = nn.Sequential(*self.model0)
+
+    def forward(self, x):
+        out = self.block0(x)
+        for i in range(self.layers - 1):
+            model = getattr(self, 'encoder' + str(i))
+            out = model(out)
+        out = self.model0(out)
+        return out
+
 
 class FFN(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, drop=0.):
@@ -156,17 +187,6 @@ class FFN(nn.Module):
         x = torch.reshape(x, (b, c, h, w))
         return x
 
-class MyDecoder(nn.Module):
-    def __init__(self, n_upsample, dim, activ='relu', pad_type='zero'):
-        super(MyDecoder,self).__init__()
-        self.model1=[]
-        for i in range(n_upsample):
-            self.model1 += [nn.Upsample(scale_factor=2),
-                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
-            dim //= 2
-        self.model1 = nn.Sequential(*self.model1)
-    def forward(self, x):
-        return self.model1(x)
 
 class Decoder(nn.Module):
     def __init__(self, style_dim, mlp_dim, n_upsample, n_res, dim, output_dim, SP_input_nc, res_norm='adain',
@@ -201,14 +221,11 @@ class Decoder(nn.Module):
         self.model0_7 = [ResBlock_myDFNM(dim, 'spade', activ, pad_type=pad_type)]
         self.model0_7 = nn.Sequential(*self.model0_7)
         # upsampling blocks
-        self.model1 = MyDecoder(n_upsample, dim, activ, pad_type=pad_type)
         for i in range(n_upsample):
-            # self.model1 += [nn.Upsample(scale_factor=2),
-            #                 Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
+            self.model1 += [nn.Upsample(scale_factor=2),
+                            Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
-        # self.model1 = nn.Sequential(*self.model1)
-
-
+        self.model1 = nn.Sequential(*self.model1)
         # use reflection padding in the last conv layer
         self.model2 += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
         self.model2 = nn.Sequential(*self.model2)
@@ -250,7 +267,6 @@ class Decoder(nn.Module):
         # fusion module
         style_fusion = self.fc(style.view(style.size(0), -1))
         adain_params = self.mlp(style_fusion)
-        # 在通道维度切分指定块数
         adain_params = torch.split(adain_params, int(adain_params.shape[1] / self.n_res), 1)
 
         x_0 = x
@@ -259,7 +275,6 @@ class Decoder(nn.Module):
         x = self.model0_2([x, adain_params[2]])
         x = self.model0_3([x, adain_params[3]])
 
-        # 1*256*64*64   1*8*64*64
         x3, enerrgy_sum3 = self.styleatt(x, x_0, style, self.gamma3_1, self.gamma3_2, self.gamma3_3, \
                                          self.gamma3_style_sa, self.value3_conv_sa, \
                                          self.LN_3_style, self.LN_3_pose, self.LN_3_pose_0, \
@@ -275,9 +290,7 @@ class Decoder(nn.Module):
         x = self.model0_4([x_0, x_])
         x = self.model0_5([x, x_])
         x = self.model0_6([x, x_])
-        # 1*256*64*64
         x = self.model0_7([x, x_])
-        #输入： 1 * 64 * 256 * 256
         x = self.model1(x)
         return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
 
@@ -443,4 +456,108 @@ class MLP(nn.Module):
         return self.model(x)
 
 
+def get_nonlinearity_layer(activation_type='PReLU'):
+    """Get the activation layer for the networks"""
+    if activation_type == 'ReLU':
+        nonlinearity_layer = nn.ReLU()
+    elif activation_type == 'SELU':
+        nonlinearity_layer = nn.SELU()
+    elif activation_type == 'LeakyReLU':
+        nonlinearity_layer = nn.LeakyReLU(0.1)
+    elif activation_type == 'PReLU':
+        nonlinearity_layer = nn.PReLU()
+    else:
+        raise NotImplementedError('activation layer [%s] is not found' % activation_type)
+    return nonlinearity_layer
 
+
+class AddCoords(nn.Module):
+    """
+    Add Coords to a tensor
+    """
+
+    def __init__(self, with_r=False):
+        super(AddCoords, self).__init__()
+        self.with_r = with_r
+
+    def forward(self, x):
+        """
+        :param x: shape (batch, channel, x_dim, y_dim)
+        :return: shape (batch, channel+2, x_dim, y_dim)
+        """
+        B, _, x_dim, y_dim = x.size()
+
+        # coord calculate
+        xx_channel = torch.arange(x_dim).repeat(B, 1, y_dim, 1).type_as(x)
+        yy_cahnnel = torch.arange(y_dim).repeat(B, 1, x_dim, 1).permute(0, 1, 3, 2).type_as(x)
+        # normalization
+        xx_channel = xx_channel.float() / (x_dim - 1)
+        yy_cahnnel = yy_cahnnel.float() / (y_dim - 1)
+        xx_channel = xx_channel * 2 - 1
+        yy_cahnnel = yy_cahnnel * 2 - 1
+
+        ret = torch.cat([x, xx_channel, yy_cahnnel], dim=1)
+
+        if self.with_r:
+            rr = torch.sqrt(xx_channel ** 2 + yy_cahnnel ** 2)
+            ret = torch.cat([ret, rr], dim=1)
+
+        return ret
+
+
+def spectral_norm(module, use_spect=True):
+    """use spectral normal layer to stable the training process"""
+    if use_spect:
+        return SpectralNorm(module)
+    else:
+        return module
+
+
+class CoordConv(nn.Module):
+    """
+    CoordConv operation
+    """
+
+    def __init__(self, input_nc, output_nc, with_r=False, use_spect=False, **kwargs):
+        super(CoordConv, self).__init__()
+        self.addcoords = AddCoords(with_r=with_r)
+        input_nc = input_nc + 2
+        if with_r:
+            input_nc = input_nc + 1
+        self.conv = spectral_norm(nn.Conv2d(input_nc, output_nc, **kwargs), use_spect)
+
+    def forward(self, x):
+        ret = self.addcoords(x)
+        ret = self.conv(ret)
+
+        return ret
+
+
+def coord_conv(input_nc, output_nc, use_spect=False, use_coord=False, with_r=False, **kwargs):
+    """use coord convolution layer to add position information"""
+    if use_coord:
+        return CoordConv(input_nc, output_nc, with_r, use_spect, **kwargs)
+    else:
+        return spectral_norm(nn.Conv2d(input_nc, output_nc, **kwargs), use_spect)
+
+
+class EncoderBlock(nn.Module):
+    def __init__(self, input_nc, output_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(),
+                 use_spect=False, use_coord=False):
+        super(EncoderBlock, self).__init__()
+
+        kwargs_down = {'kernel_size': 4, 'stride': 2, 'padding': 1}
+        kwargs_fine = {'kernel_size': 3, 'stride': 1, 'padding': 1}
+
+        conv1 = coord_conv(input_nc, output_nc, use_spect, use_coord, **kwargs_down)
+        conv2 = coord_conv(output_nc, output_nc, use_spect, use_coord, **kwargs_fine)
+
+        if type(norm_layer) == type(None):
+            self.model = nn.Sequential(nonlinearity, conv1, nonlinearity, conv2, )
+        else:
+            self.model = nn.Sequential(norm_layer(input_nc), nonlinearity, conv1,
+                                       norm_layer(output_nc), nonlinearity, conv2, )
+
+    def forward(self, x):
+        out = self.model(x)
+        return out
