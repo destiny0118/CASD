@@ -18,6 +18,8 @@ import imageio
 from skimage.draw import circle, line_aa, polygon
 from skimage.color import gray2rgb
 
+from script.processImagePath import PT2_process, DPTN_process
+
 
 class FID():
     """docstring for FID
@@ -82,12 +84,13 @@ class FID():
 
         print('calculate gt_path statistics...')
         m1, s1 = self.compute_statistics_of_path(gt_path, self.verbose)
-        print('calculate generated_path statistics...')
-        m2, s2 = self.compute_statistics_of_path(generated_path, self.verbose)
-        print('calculate frechet distance...')
-        fid_value = self.calculate_frechet_distance(m1, s1, m2, s2)
-        print('fid_distance %f' % (fid_value))
-        return fid_value
+        # print('calculate generated_path statistics...')
+        # m2, s2 = self.compute_statistics_of_path(generated_path, self.verbose)
+        # print('calculate frechet distance...')
+        # fid_value = self.calculate_frechet_distance(m1, s1, m2, s2)
+        # print('fid_distance %f' % (fid_value))
+        # return fid_value
+        return 0
 
     def compute_statistics_of_path(self, path, verbose):
         npz_file = os.path.join(path, 'statistics.npz')
@@ -421,7 +424,7 @@ def compare_mae(img_true, img_test):
     return np.sum(np.abs(img_true - img_test)) / np.sum(img_true + img_test)
 
 
-def preprocess_path_for_deform_task(gt_path, distorted_path):
+def preprocess_path_for_deform_task(gt_path, distorted_path,tag):
     distorted_image_list = sorted(get_image_list(distorted_path))
     gt_list = []
     distorated_list = []
@@ -440,7 +443,15 @@ def preprocess_path_for_deform_task(gt_path, distorted_path):
         # image = image.split('_2_')[-1]
         # image = image.split('_vis')[0] + '.jpg'
         # image = image.split('___')[1]
-        image=image[:-4]
+
+        if tag=="PT2":
+            image=PT2_process(image)
+        elif tag=="DPTN":
+            image=DPTN_process(image)
+        else:
+            # image = image.split('_vis')[0] + '.jpg'
+            image = image.split('___')[1]
+
         gt_image = os.path.join(gt_path, image)
         if not os.path.isfile(gt_image):
             print(gt_image)
@@ -623,47 +634,60 @@ def create_masked_image(ano_to):
 
 
 if __name__ == "__main__":
+    PT2='../results/PT2/deepf_resize'
+    baseline_1000='../results/CASD_test/test_1000/generate'
+    DPTN='../results/DPTN/fashion_results_resize'
+
+    name='DPTN'
+    parser = argparse.ArgumentParser(description='script to compute all statistics')
+    parser.add_argument('--distorated_path', help='Path to output data', type=str, default=DPTN)
+    parser.add_argument('--name', default=name, help='name of the experiment', type=str)
+
+
+    parser.add_argument('--gt_path', help='Path to ground truth data', type=str, default='../dataset/fashion/test_resize')
+    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str, default='../dataset/fashion/test')
+    parser.add_argument('--calculate_mask', action='store_true')
+    # parser.add_argument('--tag', default="baseline")
+    args = parser.parse_args()
+
+    gt_list, distorated_list = preprocess_path_for_deform_task(args.gt_path, args.distorated_path,args.name)
     print('load start')
 
     fid = FID()
     print('load FID')
 
-    rec = Reconstruction_Metrics()
-    print('load rec')
-
-    lpips = LPIPS()
-    print('load LPIPS')
-
-    parser = argparse.ArgumentParser(description='script to compute all statistics')
-    parser.add_argument('--gt_path', help='Path to ground truth data', type=str, default='../dataset/fashion/test_resize')
-    parser.add_argument('--distorated_path', help='Path to output data', type=str, default='../results/PT2/deepf_resize')
-    parser.add_argument('--fid_real_path', help='Path to real images when calculate FID', type=str, default='../dataset/fashion/test_resize')
-    parser.add_argument('--name', default='PT2', help='name of the experiment', type=str)
-    parser.add_argument('--calculate_mask', action='store_true')
-    args = parser.parse_args()
-
-    for arg in vars(args):
-        print('[%s] =' % arg, getattr(args, arg))
-
     print('calculate fid metric...')
-    fid_score = fid.calculate_from_disk(args.distorated_path, args.gt_path)
+    fid_score = fid.calculate_from_disk(args.distorated_path, args.fid_real_path)
 
-    gt_list, distorated_list = preprocess_path_for_deform_task(args.gt_path, args.distorated_path)
-    print('calculate reconstruction metric...')
-    rec_dic = rec.calculate_from_disk(distorated_list, gt_list, save_path=args.distorated_path, sort=False, debug=False)
-    print('calculate LPIPS...')
-    lpips_score = lpips.calculate_from_disk(distorated_list, gt_list, sort=False)
-    if args.calculate_mask:
-        mask_lpips_score = lpips.calculate_mask_lpips(distorated_list, gt_list, sort=False)
-
-    dic = {}
-    dic['name'] = [args.name]
-    for key in rec_dic:
-        dic[key] = rec_dic[key]
-    dic['fid'] = [fid_score]
-    dic['lpips'] = [lpips_score]
-    if args.calculate_mask:
-        dic['mask_lpips'] = [mask_lpips_score]
-
-    df = pd.DataFrame(dic)
-    df.to_csv('./eval_results/' + args.name + '.csv', index=True)
+    # rec = Reconstruction_Metrics()
+    # print('load rec')
+    #
+    # lpips = LPIPS()
+    # print('load LPIPS')
+    #
+    #
+    #
+    # for arg in vars(args):
+    #     print('[%s] =' % arg, getattr(args, arg))
+    #
+    #
+    #
+    # # gt_list, distorated_list = preprocess_path_for_deform_task(args.gt_path, args.distorated_path)
+    # print('calculate reconstruction metric...')
+    # rec_dic = rec.calculate_from_disk(distorated_list, gt_list, save_path=args.distorated_path, sort=False, debug=False)
+    # print('calculate LPIPS...')
+    # lpips_score = lpips.calculate_from_disk(distorated_list, gt_list, sort=False)
+    # if args.calculate_mask:
+    #     mask_lpips_score = lpips.calculate_mask_lpips(distorated_list, gt_list, sort=False)
+    #
+    # dic = {}
+    # dic['name'] = [args.name]
+    # for key in rec_dic:
+    #     dic[key] = rec_dic[key]
+    # dic['fid'] = [fid_score]
+    # dic['lpips'] = [lpips_score]
+    # if args.calculate_mask:
+    #     dic['mask_lpips'] = [mask_lpips_score]
+    #
+    # df = pd.DataFrame(dic)
+    # df.to_csv('./eval_results/' + args.name + '.csv', index=True)

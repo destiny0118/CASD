@@ -196,6 +196,7 @@ class FreqFusion(nn.Module):
         if self.use_high_pass:
             normal_init(self.content_encoder2, std=0.001)
 
+    #1*9*512*512  3 null 1*1*3*3
     def kernel_normalizer(self, mask, kernel, scale_factor=None, hamming=1):
         if scale_factor is not None:
             mask = F.pixel_shuffle(mask, self.scale_factor)
@@ -236,6 +237,7 @@ class FreqFusion(nn.Module):
                                                                                           self.up_group,
                                                                                           1)  # 利用初始高通滤波对压缩hr_feat的高频增强 （x-x的低通结果=x的高通结果）
 
+                    # [1,25,512,512]
                     mask_lr_hr_feat = self.content_encoder(compressed_hr_feat)  # 从hr_feat得到初始低通滤波特征
                     mask_lr_init = self.kernel_normalizer(mask_lr_hr_feat, self.lowpass_kernel, hamming=self.hamming_lowpass)  # kernel归一化得到初始低通滤波
 
