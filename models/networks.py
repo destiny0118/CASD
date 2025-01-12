@@ -7,6 +7,7 @@ from torch.optim import lr_scheduler
 
 import math
 
+
 # added
 def weights_init_ada(init_type='gaussian'):
     def init_fun(m):
@@ -27,6 +28,7 @@ def weights_init_ada(init_type='gaussian'):
                 assert 0, "Unsupported initialization: {}".format(init_type)
             if hasattr(m, 'bias') and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
+
     return init_fun
 
 
@@ -130,11 +132,11 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
     if use_gpu:
         assert (torch.cuda.is_available())
 
-    if which_model_netG == 'CASD_module':
+    if which_model_netG == 'CASD':
         style_dim = 2048
         n_res = 8
         mlp_dim = 256
-        from models.CASD_module import ADGen
+        from models.CASD_module.CASD import ADGen
         netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
     elif which_model_netG == 'CASD_FreqFusion':
         style_dim = 2048
@@ -153,26 +155,26 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
 
 class AttrDict(dict):
 
-    def __init__(self,*args,**kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def operation_list(self,value):
+    def operation_list(self, value):
         new_value = []
         for v in value:
             if isinstance(v, dict):
                 new_value.append(AttrDict(v))
-            elif isinstance(v,list):
+            elif isinstance(v, list):
                 new_value.append(self.operation_list(v))
             else:
                 new_value.append(v)
         return new_value
 
     def __getattr__(self, item):
-        value=self[item]
-        if isinstance(value,dict):
-            value=AttrDict(value)
-        elif isinstance(value,list):
-            value=self.operation_list(value)
+        value = self[item]
+        if isinstance(value, dict):
+            value = AttrDict(value)
+        elif isinstance(value, list):
+            value = self.operation_list(value)
         return value
 
 
@@ -252,7 +254,6 @@ class GANLoss(nn.Module):
         return self.loss(input, target_tensor)
 
 
-
 # Define a resnet block
 class ResnetBlock(nn.Module):
     def __init__(self, dim, padding_type, norm_layer, use_dropout, use_bias):
@@ -294,6 +295,7 @@ class ResnetBlock(nn.Module):
     def forward(self, x):
         out = x + self.conv_block(x)
         return out
+
 
 class ResnetDiscriminator(nn.Module):
     def __init__(self, input_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, gpu_ids=[],
@@ -357,5 +359,3 @@ class ResnetDiscriminator(nn.Module):
             return nn.parallel.data_parallel(self.model, input, self.gpu_ids)
         else:
             return self.model(input)
-
-

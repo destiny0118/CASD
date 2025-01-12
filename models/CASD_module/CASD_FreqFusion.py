@@ -10,12 +10,14 @@ from torch.nn.parameter import Parameter
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
 import functools
 
-from models.CASD_module.ContentEncoder import ContentEncoder
-from models.CASD_module.VggStyleEncoder import VggStyleEncoder
 from models.tools.BasicBlocks import Conv2dBlock_my, LinearBlock, Conv2dBlock, ResBlock
-from models.tools.EncoderBlock import EncoderBlock
 from models.tools.FreqFusion import FreqFusion
 from models.tools.functions import get_norm_layer, get_nonlinearity_layer
+
+
+# 存储结果
+# FreqFusion采用三个
+# FreqFusion采用两个，并有参数权衡
 
 
 # Moddfied with AdINGen
@@ -41,7 +43,7 @@ class ADGen(nn.Module):
         content = self.enc_content(img_A)
         style = self.enc_style(img_B, sem_B)
 
-        images_recon = self.dec(content, style,self.enc_style.styleFeature)
+        images_recon = self.dec(content, style, self.enc_style.styleFeature)
         return images_recon
 
 
@@ -64,17 +66,20 @@ class FFN(nn.Module):
         x = torch.reshape(x, (b, c, h, w))
         return x
 
+
 class MyDecoder(nn.Module):
     def __init__(self, n_upsample, dim, activ='relu', pad_type='zero'):
-        super(MyDecoder,self).__init__()
-        self.model1=[]
+        super(MyDecoder, self).__init__()
+        self.model1 = []
         for i in range(n_upsample):
             self.model1 += [nn.Upsample(scale_factor=2),
                             Conv2dBlock(dim, dim // 2, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
             dim //= 2
         self.model1 = nn.Sequential(*self.model1)
+
     def forward(self, x):
         return self.model1(x)
+
 
 class Decoder(nn.Module):
     def __init__(self, style_dim, mlp_dim, n_upsample, n_res, dim, output_dim, SP_input_nc, res_norm='adain',
@@ -116,7 +121,6 @@ class Decoder(nn.Module):
             dim //= 2
         # self.model1 = nn.Sequential(*self.model1)
 
-
         # use reflection padding in the last conv layer
         self.model2 += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
         self.model2 = nn.Sequential(*self.model2)
@@ -156,20 +160,19 @@ class Decoder(nn.Module):
 
         norm_layer = get_norm_layer(norm_type='instance')
         nonlinearity = get_nonlinearity_layer(activation_type='LeakyReLU')
-        self.encoder = EncoderBlock(256, 256, norm_layer,nonlinearity, False, False)
+        self.encoder = EncoderBlock(256, 256, norm_layer, nonlinearity, False, False)
 
-        self.ff1=FreqFusion(hr_channels=256,lr_channels=256)
-        self.conv1=Conv2dBlock(256, 128, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)
-        self.ff2=FreqFusion(hr_channels=128,lr_channels=128)
+        self.ff1 = FreqFusion(hr_channels=256, lr_channels=256)
+        self.conv1 = Conv2dBlock(256, 128, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)
+        self.ff2 = FreqFusion(hr_channels=128, lr_channels=128)
         # self.conv2 = Conv2dBlock(128, 64, 3,1, 1, norm='ln', activation=activ, pad_type=pad_type)
         # self.ff3=FreqFusion(hr_channels=64,lr_channels=64)
         self.upSampling = [nn.Upsample(scale_factor=2), Conv2dBlock(128, 64, 5, 1, 2, norm='ln', activation=activ, pad_type=pad_type)]
         self.upSampling = nn.Sequential(*self.upSampling)
-        self.beta_1 = nn.Parameter(torch.zeros(1))
-        self.beta_2 = nn.Parameter(torch.zeros(1))
+        # self.beta_1 = nn.Parameter(torch.zeros(1))
+        # self.beta_2 = nn.Parameter(torch.zeros(1))
 
-
-    def forward(self, x, style,styleFeature):
+    def forward(self, x, style, styleFeature):
         # fusion module
         style_fusion = self.fc(style.view(style.size(0), -1))
         adain_params = self.mlp(style_fusion)
@@ -203,14 +206,14 @@ class Decoder(nn.Module):
         # #1*256*64*64 -> 1 * 64 * 256 * 256
         # x = self.model1(x)
 
-        #1*256*32*32
-        y3=self.encoder(x)
-        _,x3,y3_up=self.ff1(hr_feat=styleFeature['x3'],lr_feat=y3)
-        y2=self.beta_1*x3+y3_up
-        y2=self.conv1(y2)
-        _,x2,y2_up=self.ff2(hr_feat=styleFeature['x2'],lr_feat=y2)
-        y1=self.beta_2*x2+y2_up
-        y1=self.upSampling(y1)
+        # 1*256*32*32
+        y3 = self.encoder(x)
+        _, x3, y3_up = self.ff1(hr_feat=styleFeature['x3'], lr_feat=y3)
+        y2 = x3 + y3_up
+        y2 = self.conv1(y2)
+        _, x2, y2_up = self.ff2(hr_feat=styleFeature['x2'], lr_feat=y2)
+        y1 = x2 + y2_up
+        y1 = self.upSampling(y1)
         # _,x1,y1_up=self.ff3(hr_feat=styleFeature['x1'],lr_feat=y1)
         # y0=x1+y1_up
 
@@ -297,6 +300,145 @@ class ILNQT(nn.Module):
         return out
 
 
+# 目标姿势编码器
+class ContentEncoder(nn.Module):
+    def __init__(self, layers=2, ngf=64, img_f=512, use_spect=False, use_coord=False):
+        super(ContentEncoder, self).__init__()
+
+        self.layers = layers
+        norm_layer = get_norm_layer(norm_type='instance')
+        nonlinearity = get_nonlinearity_layer(activation_type='LeakyReLU')
+        self.ngf = ngf
+        self.img_f = img_f
+        self.block0 = EncoderBlock(30, ngf, norm_layer,
+                                   nonlinearity, use_spect, use_coord)
+        mult = 1
+        for i in range(self.layers - 1):
+            mult_prev = mult
+            mult = min(2 ** (i + 1), self.img_f // self.ngf)
+            block = EncoderBlock(self.ngf * mult_prev, self.ngf * mult, norm_layer,
+                                 nonlinearity, use_spect, use_coord)
+            setattr(self, 'encoder' + str(i), block)
+
+        self.model0 = []
+        self.model0 += [norm_layer(128)]
+        self.model0 += [nonlinearity]
+        self.model0 += [nn.Conv2d(128, 256, 1, 1, 0)]
+        self.model0 = nn.Sequential(*self.model0)
+
+    def forward(self, x):
+        out = self.block0(x)
+        for i in range(self.layers - 1):
+            model = getattr(self, 'encoder' + str(i))
+            out = model(out)
+        out = self.model0(out)
+        return out
+
+
+# 人物图像纹理特征编码
+# CASD_FreqFusion添加了styleFeature变量，记录不同编码阶段特征
+class VggStyleEncoder(nn.Module):
+    def __init__(self, n_downsample, input_dim, dim, style_dim, norm, activ, pad_type):
+        super(VggStyleEncoder, self).__init__()
+        # self.vgg = models.vgg19(pretrained=True).features
+        vgg19 = models.vgg19(pretrained=False)
+        vgg19.load_state_dict(torch.load('dataset/fashion/vgg19-dcbb9e9d.pth'))
+        self.vgg = vgg19.features
+
+        for param in self.vgg.parameters():
+            param.requires_grad_(False)
+
+        self.conv1 = Conv2dBlock(input_dim, dim, 7, 1, 3, norm=norm, activation=activ, pad_type=pad_type)  # 3->64
+        dim = dim * 2
+        self.conv2 = Conv2dBlock(dim, dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)  # 128->128
+        dim = dim * 2
+        self.conv3 = Conv2dBlock(dim, dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)  # 256->256
+        dim = dim * 2
+        self.conv4 = Conv2dBlock(dim, dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)  # 512->512
+        dim = dim * 2
+
+        self.model0 = []
+        self.model0 += [nn.Conv2d(dim, style_dim, 1, 1, 0)]
+        self.model0 = nn.Sequential(*self.model0)
+
+        self.AP = []
+        self.AP += [nn.AdaptiveAvgPool2d(1)]
+        self.AP = nn.Sequential(*self.AP)
+        self.output_dim = dim
+
+        self.styleFeature = {}
+
+    def get_features(self, image, model, layers=None):
+        if layers is None:
+            layers = {'0': 'conv1_1', '5': 'conv2_1', '10': 'conv3_1', '19': 'conv4_1'}
+        features = {}
+        x = image
+        # model._modules is a dictionary holding each module in the model
+        for name, layer in model._modules.items():
+            x = layer(x)
+            if name in layers:
+                features[layers[name]] = x
+        return features
+
+    def texture_enc(self, x):
+        sty_fea = self.get_features(x, self.vgg)
+        x = self.conv1(x)
+        # self.styleFeature['x1'] = x
+
+        x = torch.cat([x, sty_fea['conv1_1']], dim=1)
+        x = self.conv2(x)
+        self.styleFeature['x2'] = x
+
+        x = torch.cat([x, sty_fea['conv2_1']], dim=1)
+        x = self.conv3(x)
+        self.styleFeature['x3'] = x
+
+        x = torch.cat([x, sty_fea['conv3_1']], dim=1)
+        x = self.conv4(x)
+        x = torch.cat([x, sty_fea['conv4_1']], dim=1)
+        x0 = self.model0(x)
+        return x0
+
+    def forward(self, x, sem):
+
+        codes = self.texture_enc(x)
+        segmap = F.interpolate(sem, size=codes.size()[2:], mode='nearest')
+
+        bs = codes.shape[0]
+        hs = codes.shape[2]
+        ws = codes.shape[3]
+        cs = codes.shape[1]
+        f_size = cs
+
+        s_size = segmap.shape[1]
+        codes_vector = torch.zeros((bs, s_size, cs), dtype=codes.dtype, device=codes.device)
+
+        for i in range(bs):
+            for j in range(s_size):
+                component_mask_area = torch.sum(segmap.bool()[i, j])
+                if component_mask_area > 0:
+                    codes_component_feature = codes[i].masked_select(segmap.bool()[i, j]).reshape(f_size,
+                                                                                                  component_mask_area).mean(1)
+                    codes_vector[i][j] = codes_component_feature
+                else:
+                    tmpmean, tmpstd = calc_mean_std(
+                        codes[i].reshape(1, codes[i].shape[0], codes[i].shape[1], codes[i].shape[2]))
+                    codes_vector[i][j] = tmpmean.squeeze()
+
+        return codes_vector.view(bs, -1).unsqueeze(2).unsqueeze(3)
+
+
+def calc_mean_std(feat, eps=1e-5):
+    # eps is a small value added to the variance to avoid divide-by-zero.
+    size = feat.size()
+    assert (len(size) == 4)
+    N, C = size[:2]
+    feat_var = feat.view(N, C, -1).var(dim=2) + eps
+    feat_std = feat_var.sqrt().view(N, C, 1, 1)
+    feat_mean = feat.view(N, C, -1).mean(dim=2).view(N, C, 1, 1)
+    return feat_mean, feat_std
+
+
 ##################################################################################
 # Sequential Models
 ##################################################################################
@@ -378,4 +520,93 @@ class MLP(nn.Module):
         return self.model(x)
 
 
+class AddCoords(nn.Module):
+    """
+    Add Coords to a tensor
+    """
 
+    def __init__(self, with_r=False):
+        super(AddCoords, self).__init__()
+        self.with_r = with_r
+
+    def forward(self, x):
+        """
+        :param x: shape (batch, channel, x_dim, y_dim)
+        :return: shape (batch, channel+2, x_dim, y_dim)
+        """
+        B, _, x_dim, y_dim = x.size()
+
+        # coord calculate
+        xx_channel = torch.arange(x_dim).repeat(B, 1, y_dim, 1).type_as(x)
+        yy_cahnnel = torch.arange(y_dim).repeat(B, 1, x_dim, 1).permute(0, 1, 3, 2).type_as(x)
+        # normalization
+        xx_channel = xx_channel.float() / (x_dim - 1)
+        yy_cahnnel = yy_cahnnel.float() / (y_dim - 1)
+        xx_channel = xx_channel * 2 - 1
+        yy_cahnnel = yy_cahnnel * 2 - 1
+
+        ret = torch.cat([x, xx_channel, yy_cahnnel], dim=1)
+
+        if self.with_r:
+            rr = torch.sqrt(xx_channel ** 2 + yy_cahnnel ** 2)
+            ret = torch.cat([ret, rr], dim=1)
+
+        return ret
+
+
+def spectral_norm(module, use_spect=True):
+    """use spectral normal layer to stable the training process"""
+    if use_spect:
+        return SpectralNorm(module)
+    else:
+        return module
+
+
+class CoordConv(nn.Module):
+    """
+    CoordConv operation
+    """
+
+    def __init__(self, input_nc, output_nc, with_r=False, use_spect=False, **kwargs):
+        super(CoordConv, self).__init__()
+        self.addcoords = AddCoords(with_r=with_r)
+        input_nc = input_nc + 2
+        if with_r:
+            input_nc = input_nc + 1
+        self.conv = spectral_norm(nn.Conv2d(input_nc, output_nc, **kwargs), use_spect)
+
+    def forward(self, x):
+        ret = self.addcoords(x)
+        ret = self.conv(ret)
+
+        return ret
+
+
+def coord_conv(input_nc, output_nc, use_spect=False, use_coord=False, with_r=False, **kwargs):
+    """use coord convolution layer to add position information"""
+    if use_coord:
+        return CoordConv(input_nc, output_nc, with_r, use_spect, **kwargs)
+    else:
+        return spectral_norm(nn.Conv2d(input_nc, output_nc, **kwargs), use_spect)
+
+
+class EncoderBlock(nn.Module):
+    def __init__(self, input_nc, output_nc, norm_layer=nn.BatchNorm2d, nonlinearity=nn.LeakyReLU(),
+                 use_spect=False, use_coord=False):
+        super(EncoderBlock, self).__init__()
+
+        kwargs_down = {'kernel_size': 4, 'stride': 2, 'padding': 1}
+        kwargs_fine = {'kernel_size': 3, 'stride': 1, 'padding': 1}
+
+        conv1 = coord_conv(input_nc, output_nc, use_spect, use_coord, **kwargs_down)
+        conv2 = coord_conv(output_nc, output_nc, use_spect, use_coord, **kwargs_fine)
+
+        if type(norm_layer) == type(None):
+            self.model = nn.Sequential(nonlinearity, conv1, nonlinearity, conv2, )
+        else:
+            self.model = nn.Sequential(norm_layer(input_nc), nonlinearity, conv1,
+                                       norm_layer(output_nc), nonlinearity, conv2, )
+
+    def forward(self, x):
+        out = self.model(x)
+        return out
