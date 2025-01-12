@@ -10,11 +10,13 @@ class TrainOptions(BaseOptions):
                                  help='frequency of saving checkpoints at the end of epochs')
         self.parser.add_argument('--display_freq', type=int, default=1000, help='frequency of showing training results on screen')
 
-        self.parser.add_argument('--epoch_count', type=int, default=761, help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
+        self.parser.add_argument('--epoch_count', type=int, default=1,
+                                 help='the starting epoch count, we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>, ...')
         self.parser.add_argument('--which_epoch', type=str, default='760', help='which epoch to load? set to latest to use latest cached model')
-        self.parser.add_argument('--continue_train', default=True, help='continue training: load the latest model')
+        self.parser.add_argument('--continue_train', default=False, action='store_true', help='continue training: load the latest model')
 
-        self.parser.add_argument('--display_single_pane_ncols', type=int, default=0, help='if positive, display all images in a single visdom web panel with certain number of images per row.')
+        self.parser.add_argument('--display_single_pane_ncols', type=int, default=0,
+                                 help='if positive, display all images in a single visdom web panel with certain number of images per row.')
         self.parser.add_argument('--update_html_freq', type=int, default=1000, help='frequency of saving training results to html')
 
         self.parser.add_argument('--save_latest_freq', type=int, default=5000, help='frequency of saving the latest results')
@@ -34,7 +36,8 @@ class TrainOptions(BaseOptions):
         self.parser.add_argument('--lambda_lpips', type=float, default=1.0, help='weight of CX loss')
 
         self.parser.add_argument('--pool_size', type=int, default=0, help='the size of image buffer that stores previously generated images')
-        self.parser.add_argument('--no_html', action='store_true', help='do not save intermediate training results to [opt.checkpoints_dir]/[opt.name]/web/')
+        self.parser.add_argument('--no_html', action='store_true',
+                                 help='do not save intermediate training results to [opt.checkpoints_dir]/[opt.name]/web/')
         self.parser.add_argument('--lr_policy', type=str, default='lambda', help='learning rate policy: lambda|step|plateau')
         self.parser.add_argument('--lr_decay_iters', type=int, default=50, help='multiply by a gamma every lr_decay_iters iterations')
         self.parser.add_argument('--L1_type', type=str, default='l1_plus_perL1', help='use which kind of L1 loss. (origin|l1_plus_perL1)')

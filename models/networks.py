@@ -132,18 +132,18 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
     if use_gpu:
         assert (torch.cuda.is_available())
 
+    style_dim = 2048
+    n_res = 8
+    mlp_dim = 256
     if which_model_netG == 'CASD':
-        style_dim = 2048
-        n_res = 8
-        mlp_dim = 256
         from models.CASD_module.CASD import ADGen
         netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
     elif which_model_netG == 'CASD_FreqFusion':
-        style_dim = 2048
-        n_res = 8
-        mlp_dim = 256
         from models.CASD_module.CASD_FreqFusion import ADGen
         netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
+    elif which_model_netG == 'CASD_MultiHeadAttention':
+        from models.CASD_module.CASD_MultiHeadAttention import ADGen
+        netG = ADGen(input_nc, ngf, style_dim, n_downsampling,n_res, mlp_dim)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % which_model_netG)
     if len(gpu_ids) > 1:

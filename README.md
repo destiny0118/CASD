@@ -107,7 +107,7 @@ python train.py  --pairLst ./dataset/fashion/fashion-resize-multiView-pairs-trai
 ```
 
 ```bash
-python train.py  --gpu_ids 0 --which_model_netG CASD_FreqFusion --batchSize 8 --name CASD_FreqFusion2
+python train.py  --gpu_ids 0 --which_model_netG CASD_MultiHeadAttention --batchSize 1 --name CASD_MultiHeadAttention 
 
 ```
 
