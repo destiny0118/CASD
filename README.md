@@ -99,7 +99,7 @@ The dataset structure is recommended as:
 ### Training
 
 ```bash
-python --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD_StyleFusion --checkpoints_dir ./checkpoints
+python train.py --name CASD_StyleFusion --batchSize 8 --gpu_ids 0 --which_model_netG CASD_StyleFusion --checkpoints_dir ./checkpoints
 ```
 
 ```bash

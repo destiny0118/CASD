@@ -77,7 +77,7 @@ class VggStyleEncoder(nn.Module):
         self.AP = nn.Sequential(*self.AP)
         self.output_dim = dim
 
-        self.se1 = SEBlock(64)
+        # self.se1 = SEBlock(64)
         self.se2 = SEBlock(128)
         self.se3=SEBlock(256)
 
@@ -112,7 +112,7 @@ class VggStyleEncoder(nn.Module):
     def forward(self, x, segmap):
         sty_fea = self.get_features(x, self.vgg)
         x = self.conv1(x)  # [1,64,256,256]
-        style1 = self.get_codes_vector(self.se1(x), segmap)  # [1,64*8,1,1]
+        # style1 = self.get_codes_vector(self.se1(x), segmap)  # [1,64*8,1,1]
 
         x = torch.cat([x, sty_fea['conv1_1']], dim=1)
         x = self.conv2(x)  # [1,128,128,128]
@@ -129,8 +129,8 @@ class VggStyleEncoder(nn.Module):
         x = torch.cat([x, sty_fea['conv4_1']], dim=1)
         x = self.model0(x)
         segmap = F.interpolate(segmap, size=x.size()[2:], mode='nearest')
-        style0 = self.get_codes_vector(x, segmap)  # [1,2048,1,1]
-        return [style0, style3, style2, style1]
+        style4 = self.get_codes_vector(x, segmap)  # [1,2048,1,1]
+        return [style4, style3, style2]
 
     def get_codes_vector(self, codes, segmap):
         bs = codes.shape[0]
@@ -316,6 +316,18 @@ class Decoder(nn.Module):
         self.FFN4_1 = FFN(256)
         self.up = nn.Upsample(scale_factor=2)
 
+        # style3
+        self.up_query_conv0 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=1)
+        self.up_key_conv0 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=1)
+        self.up_value_conv0 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=1)
+        self.up_FFN0 = FFN(256)
+        self.up_LN_style0 = ILNKVT(256)
+        self.up_LN_pose0 = ILNQT(256)
+        self.up_gamma_style_sa0 = nn.Parameter(torch.zeros(1))
+        self.up_value_conv_sa0 = nn.Conv2d(in_channels=2048 // 8, out_channels=1024 // 8, kernel_size=1)
+        self.up_gamma0_1 = nn.Parameter(torch.zeros(1))
+        self.up_gamma0_2 = nn.Parameter(torch.zeros(1))
+        # style2
         self.up_query_conv1 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1)
         self.up_key_conv1 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1)
         self.up_value_conv1 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1)
@@ -326,17 +338,17 @@ class Decoder(nn.Module):
         self.up_value_conv_sa1 = nn.Conv2d(in_channels=1024 // 8, out_channels=1024 // 8, kernel_size=1)
         self.up_gamma1_1 = nn.Parameter(torch.zeros(1))
         self.up_gamma1_2 = nn.Parameter(torch.zeros(1))
-
-        self.up_query_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
-        self.up_key_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
-        self.up_value_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
-        self.up_FFN2 = FFN(64)
-        self.up_LN_style2 = ILNKVT(64)
-        self.up_LN_pose2 = ILNQT(64)
-        self.up_gamma_style_sa2 = nn.Parameter(torch.zeros(1))
-        self.up_value_conv_sa2 = nn.Conv2d(in_channels=512 // 8, out_channels=512 // 8, kernel_size=1)
-        self.up_gamma2_1 = nn.Parameter(torch.zeros(1))
-        self.up_gamma2_2 = nn.Parameter(torch.zeros(1))
+        #style1
+        # self.up_query_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
+        # self.up_key_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
+        # self.up_value_conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
+        # self.up_FFN2 = FFN(64)
+        # self.up_LN_style2 = ILNKVT(64)
+        # self.up_LN_pose2 = ILNQT(64)
+        # self.up_gamma_style_sa2 = nn.Parameter(torch.zeros(1))
+        # self.up_value_conv_sa2 = nn.Conv2d(in_channels=512 // 8, out_channels=512 // 8, kernel_size=1)
+        # self.up_gamma2_1 = nn.Parameter(torch.zeros(1))
+        # self.up_gamma2_2 = nn.Parameter(torch.zeros(1))
 
     # 1*256*64*64 1*2048*1*1 1*1024*1*1
     def forward(self, x, style):
@@ -369,6 +381,12 @@ class Decoder(nn.Module):
         x = self.model0_5([x, x_])
         x = self.model0_6([x, x_])
         x = self.model0_7([x, x_])
+        StyleFusion0 = self.my_styleatt(x, style[1], self.up_gamma0_1, self.up_gamma0_2,
+                                        self.up_gamma_style_sa0, self.up_value_conv_sa0,
+                                        self.up_LN_style0, self.up_LN_pose0,
+                                        self.up_query_conv0, self.up_key_conv0, self.up_value_conv0, self.up_FFN0)
+        x = x + StyleFusion0
+
         x = self.model1_1(x)
 
         StyleFusion1 = self.my_styleatt(x, style[2], self.up_gamma1_1, self.up_gamma1_2,
@@ -380,11 +398,11 @@ class Decoder(nn.Module):
 
         x = self.model1_2(x)
 
-        StyleFusion2 = self.my_styleatt(x, style[3], self.up_gamma2_1, self.up_gamma2_2,
-                                        self.up_gamma_style_sa2, self.up_value_conv_sa2,
-                                        self.up_LN_style2, self.up_LN_pose2,
-                                        self.up_query_conv2, self.up_key_conv2, self.up_value_conv2, self.up_FFN2)
-        x = x + StyleFusion2
+        # StyleFusion2 = self.my_styleatt(x, style[3], self.up_gamma2_1, self.up_gamma2_2,
+        #                                 self.up_gamma_style_sa2, self.up_value_conv_sa2,
+        #                                 self.up_LN_style2, self.up_LN_pose2,
+        #                                 self.up_query_conv2, self.up_key_conv2, self.up_value_conv2, self.up_FFN2)
+        # x = x + StyleFusion2
         return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
 
     '''
