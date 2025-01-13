@@ -1,9 +1,9 @@
+data/keypoint.py
+options/train_options.py
+options/base_options.py
 dataset/
 checkpoints/
-options/__pycache__
-models/__pycache__
-util/__pycache__
-results
+results/
 util/web
 wandb
 .idea

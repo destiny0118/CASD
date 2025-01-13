@@ -4,7 +4,7 @@ from data.base_data_loader import BaseDataLoader
 
 def CreateDataset(opt):
     dataset = None
-    
+
     if opt.dataset_mode == 'keypoint':
         from data.keypoint import KeyDataset
         dataset = KeyDataset()
@@ -30,7 +30,7 @@ class CustomDatasetDataLoader(BaseDataLoader):
             self.dataset,
             batch_size=opt.batchSize,
             shuffle=not opt.serial_batches,
-            num_workers=int(opt.nThreads))
+            num_workers=opt.nThreads)
 
     def load_data(self):
         return self

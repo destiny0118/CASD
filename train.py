@@ -46,20 +46,14 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         # model.optimize_parameters()
         model.optimize_parameters()
 
-
-        if total_steps % opt.display_freq == 0:
-            save_result = total_steps % opt.update_html_freq == 0
-            visualizer.display_current_results(model.get_current_visuals(), epoch, save_result,total_steps / opt.display_freq)
-
-        for key,value in model.get_current_errors().items():
-            epoch_loss[key]=epoch_loss.get(key,0)+value
+        for key, value in model.get_current_errors().items():
+            epoch_loss[key] = epoch_loss.get(key, 0) + value
 
         if total_steps % opt.print_freq == 0:
             errors = model.get_current_errors()
             t = (time.time() - iter_start_time) / opt.batchSize
             visualizer.print_current_errors(epoch, epoch_iter, errors, t)
-
-
+            visualizer.display_current_results(model.get_current_visuals(), epoch, total_steps / opt.print_freq)
 
             # if use_wandb:
             #     run.log({
@@ -67,20 +61,10 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
             #         "iter_loss":errors
             #     })
 
+    for key, value in epoch_loss.items():
+        epoch_loss[key] = epoch_loss.get(key, 0) * opt.batchSize / epoch_iter
 
-
-            # if opt.display_id > 0:
-            #     visualizer.plot_current_errors(epoch, float(epoch_iter)/dataset_size, opt, errors)
-
-        # if total_steps % opt.save_latest_freq == 0:
-        #     print('saving the latest model (epoch %d, total_steps %d)' %
-        #           (epoch, total_steps))
-        #     model.save('latest')
-
-    for key,value in epoch_loss.items():
-        epoch_loss[key]=epoch_loss.get(key,0)*opt.batchSize/epoch_iter
-
-    visualizer.print_epoch_errors(epoch,opt.niter + opt.niter_decay,epoch_loss, time.time() - epoch_start_time)
+    visualizer.print_epoch_errors(epoch, opt.niter + opt.niter_decay, epoch_loss, time.time() - epoch_start_time)
     #
     # if use_wandb:
     #     run.log(
@@ -91,11 +75,8 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     #     )
     # 多少次epoch保存一次模型
     if epoch % opt.save_epoch_freq == 0:
-        print('saving the model at the end of epoch %d, iters %d' %(epoch, total_steps))
+        print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))
         # model.save('latest')
         model.save(epoch)
 
-
     model.update_learning_rate()
-
-

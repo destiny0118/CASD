@@ -1,12 +1,12 @@
-
 # Cross-Attention-Based-Style-Distribution
 
-The source code for our paper "[Cross Attention Based Style Distribution for Controllable Person Image Synthesis](https://arxiv.org/abs/2208.00712)" (**ECCV2022**).
+The source code for our
+paper "[Cross Attention Based Style Distribution for Controllable Person Image Synthesis](https://arxiv.org/abs/2208.00712)" (
+**ECCV2022**).
 
 <p align='center'>  
   <img src='https://github.com/xyzhouo/CASD/blob/main/head_img3_00.png' width='1000'/>
 </p>
-
 
 ## Installation
 
@@ -28,10 +28,10 @@ conda install -c pytorch pytorch=1.7.0 torchvision=0.8.0 cudatoolkit=10.2
 pip install -r requirements.txt
 ```
 
-
 ### Data Preperation
 
 The dataset structure is recommended as:
+
 ```
 +—dataset
 |   +—fashion
@@ -54,28 +54,34 @@ The dataset structure is recommended as:
 ...
 ```
 
-
 1. Person images
 
-- Download `img_highres.zip` of the DeepFashion Dataset from [In-shop Clothes Retrieval Benchmark](https://drive.google.com/drive/folders/0B7EVK8r0v71pYkd5TzBiclMzR00). 
+- Download `img_highres.zip` of the DeepFashion Dataset
+  from [In-shop Clothes Retrieval Benchmark](https://drive.google.com/drive/folders/0B7EVK8r0v71pYkd5TzBiclMzR00).
 
-- Unzip `img_highres.zip`. You will need to ask for password from the [dataset maintainers](http://mmlab.ie.cuhk.edu.hk/projects/DeepFashion/InShopRetrieval.html). Then put the obtained folder **img_highres** under the `./dataset/fashion` directory. 
+- Unzip `img_highres.zip`. You will need to ask for password from
+  the [dataset maintainers](http://mmlab.ie.cuhk.edu.hk/projects/DeepFashion/InShopRetrieval.html). Then put the
+  obtained folder **img_highres** under the `./dataset/fashion` directory.
 
-- Download train/test key points annotations and the train/test pairs from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing) including **fashion-resize-pairs-train.csv**, **fashion-resize-pairs-test.csv**, **fashion-resize-annotation-train.csv**, **fashion-resize-annotation-test.csv,** **train.lst**, **test.lst**. Put these files under the  `./dataset/fashion` directory.
+- Download train/test key points annotations and the train/test pairs
+  from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing) including *
+  *fashion-resize-pairs-train.csv**, **fashion-resize-pairs-test.csv**, **fashion-resize-annotation-train.csv**, *
+  *fashion-resize-annotation-test.csv,** **train.lst**, **test.lst**. Put these files under the  `./dataset/fashion`
+  directory.
 
 - Run the following code to split the train/test dataset.
 
   ```bash
   python tool/generate_fashion_datasets.py
   ```
-  
+
 - Run the following code to resize the train/test dataset.
 
   ```bash
   python tool/resize_fashion.py
   ``` 
-  
-  
+
+
 2. Keypoints files
 
 - Generate the pose heatmaps. Launch
@@ -84,13 +90,16 @@ The dataset structure is recommended as:
   ```
 
 3. Segmentation files
-- Extract human segmentation results from existing human parser (e.g. LIP_JPPNet). Our segmentation results ‘semantic_merge3’ are provided in [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing). Put it under the ```./dataset/fashion``` directory.
 
+- Extract human segmentation results from existing human parser (e.g. LIP_JPPNet). Our segmentation results
+  ‘semantic_merge3’ are provided
+  in [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing). Put it under
+  the ```./dataset/fashion``` directory.
 
 ### Training
 
 ```bash
-python train.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-train.csv --name CASD_test --batchSize 8 --gpu_ids 0 --which_model_netG CASD --checkpoints_dir ./checkpoints
+python --name CASD_test --batchSize 1 --gpu_ids 0 --which_model_netG CASD_StyleFusion --checkpoints_dir ./checkpoints
 ```
 
 ```bash
@@ -98,17 +107,24 @@ python train.py   --gpu_ids 0
 
 ```
 
-The models are save in `./checkpoints`. 
+The models are save in `./checkpoints`.
 
 ### Testing
-Download our pretrained model from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing). Put the obtained checkpoints under `./checkpoints/CASD_test`. Modify your data path and launch
+
+Download our pretrained model
+from [Google Drive](https://drive.google.com/drive/folders/1qGRZUJY7QipLRDNQ0lhCubDPsJxmX2jK?usp=sharing). Put the
+obtained checkpoints under `./checkpoints/CASD_test`. Modify your data path and launch
+
 ```bash
 python test.py --dataroot ./dataset/fashion --dirSem ./dataset/fashion --pairLst ./dataset/fashion/fashion-resize-pairs-test.csv --checkpoints_dir ./checkpoints --results_dir ./results --name CASD_test --phase test  --batchSize 1  --gpu_ids 0 --which_model_netG CASD --which_epoch 1000
 ```
-The result images are save in `./results`. 
+
+The result images are save in `./results`.
 
 ## Citation
+
 If you use this code for your research, please cite
+
 ```
 @article{zhou2022casd,
   title={Cross Attention Based Style Distribution for Controllable Person Image Synthesis},
