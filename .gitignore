@@ -1,0 +1,10 @@
+data/keypoint.py
+options/train_options.py
+options/base_options.py
+dataset/
+checkpoints/
+results/
+util/web
+wandb
+.idea
+**/*.pyc
