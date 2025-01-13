@@ -23,7 +23,7 @@ class TestModel(BaseModel):
         self.load_network(self.netG, 'G', which_epoch)
 
         print('---------- Networks initialized -------------')
-        networks.print_network(self.netG)
+        networks.print_network(self.netG, "netG")
         print('-----------------------------------------------')
 
     def set_input(self, input):

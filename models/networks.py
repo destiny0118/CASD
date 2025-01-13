@@ -130,11 +130,14 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
     if use_gpu:
         assert (torch.cuda.is_available())
 
+    style_dim = 2048
+    n_res = 8
+    mlp_dim = 256
     if which_model_netG == 'CASD':
-        style_dim = 2048
-        n_res = 8
-        mlp_dim = 256
         from models.CASD import ADGen
+        netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
+    elif which_model_netG == 'CASD_StyleFusion':
+        from models.CASD_StyleFusion import ADGen
         netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % which_model_netG)
@@ -197,7 +200,7 @@ def print_network(net):
     num_params = 0
     for param in net.parameters():
         num_params += param.numel()
-    print(net)
+    # print(net)
     print('Total number of parameters: %d' % num_params)
 
 

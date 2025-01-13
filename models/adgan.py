@@ -129,12 +129,12 @@ class TransferModel(BaseModel):
                 self.schedulers.append(networks.get_scheduler(optimizer, opt))
 
         print('---------- Networks initialized -------------')
-        networks.print_network(self.netG)
+        networks.print_network(self.netG, "netG")
         if self.isTrain:
             if opt.with_D_PB:
-                networks.print_network(self.netD_PB)
+                networks.print_network(self.netD_PB, "netD_PB")
             if opt.with_D_PP:
-                networks.print_network(self.netD_PP)
+                networks.print_network(self.netD_PP, "netD_PP")
         print('-----------------------------------------------')
 
         
