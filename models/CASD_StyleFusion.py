@@ -77,6 +77,11 @@ class VggStyleEncoder(nn.Module):
         self.AP = nn.Sequential(*self.AP)
         self.output_dim = dim
 
+        self.se1 = SEBlock(64)
+        self.se2 = SEBlock(128)
+        self.se3=SEBlock(256)
+
+
     def get_features(self, image, model, layers=None):
         if layers is None:
             layers = {'0': 'conv1_1', '5': 'conv2_1', '10': 'conv3_1', '19': 'conv4_1'}
@@ -89,35 +94,35 @@ class VggStyleEncoder(nn.Module):
                 features[layers[name]] = x
         return features
 
-    def texture_enc(self, x):
-        sty_fea = self.get_features(x, self.vgg)
-        x = self.conv1(x)
-        x = torch.cat([x, sty_fea['conv1_1']], dim=1)
-        x = self.conv2(x)
-        x2 = x
-        x = torch.cat([x, sty_fea['conv2_1']], dim=1)
-
-        x = self.conv3(x)
-        x = torch.cat([x, sty_fea['conv3_1']], dim=1)
-        x = self.conv4(x)
-        x = torch.cat([x, sty_fea['conv4_1']], dim=1)
-        x0 = self.model0(x)
-        return x0, x2
+    # def texture_enc(self, x):
+    #     sty_fea = self.get_features(x, self.vgg)
+    #     x = self.conv1(x)
+    #     x = torch.cat([x, sty_fea['conv1_1']], dim=1)
+    #     x = self.conv2(x)
+    #     x2 = x
+    #     x = torch.cat([x, sty_fea['conv2_1']], dim=1)
+    #
+    #     x = self.conv3(x)
+    #     x = torch.cat([x, sty_fea['conv3_1']], dim=1)
+    #     x = self.conv4(x)
+    #     x = torch.cat([x, sty_fea['conv4_1']], dim=1)
+    #     x0 = self.model0(x)
+    #     return x0, x2
 
     def forward(self, x, segmap):
         sty_fea = self.get_features(x, self.vgg)
         x = self.conv1(x)  # [1,64,256,256]
-        style1 = self.get_codes_vector(x, segmap)  # [1,64*8,1,1]
+        style1 = self.get_codes_vector(self.se1(x), segmap)  # [1,64*8,1,1]
 
         x = torch.cat([x, sty_fea['conv1_1']], dim=1)
         x = self.conv2(x)  # [1,128,128,128]
         segmap = F.interpolate(segmap, size=x.size()[2:], mode='nearest')  # [1,8,128,128]
-        style2 = self.get_codes_vector(x, segmap)  # [1,1024,1,1]
+        style2 = self.get_codes_vector(self.se2(x), segmap)  # [1,1024,1,1]
 
         x = torch.cat([x, sty_fea['conv2_1']], dim=1)
         x = self.conv3(x)
         segmap = F.interpolate(segmap, size=x.size()[2:], mode='nearest')  # [1,8,64,64]
-        style3 = self.get_codes_vector(x, segmap)  # [1,2048,1,1]
+        style3 = self.get_codes_vector(self.se3(x), segmap)  # [1,2048,1,1]
 
         x = torch.cat([x, sty_fea['conv3_1']], dim=1)
         x = self.conv4(x)
@@ -153,6 +158,26 @@ class VggStyleEncoder(nn.Module):
 
         return codes_vector.view(bs, -1).unsqueeze(2).unsqueeze(3)
 
+
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((1,1))  # 全局平均池化
+        self.fc = nn.Sequential(
+            nn.Linear(channels, channels // reduction, bias=False),  # 压缩
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels, bias=False),  # 扩展
+            nn.Sigmoid()  # 生成注意力权重
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        # 全局平均池化
+        y = self.global_avg_pool(x).view(b, c)
+        # 注意力机制
+        y = self.fc(y).view(b, c, 1, 1)
+        # 通道加权
+        return x * y.expand_as(x)
 
 class ContentEncoder(nn.Module):
     def __init__(self, layers=2, ngf=64, img_f=512, use_spect=False, use_coord=False):
@@ -355,11 +380,11 @@ class Decoder(nn.Module):
 
         x = self.model1_2(x)
 
-        # StyleFusion2 = self.my_styleatt(x, style[3], self.up_gamma2_1, self.up_gamma2_2,
-        #                                 self.up_gamma_style_sa2, self.up_value_conv_sa2,
-        #                                 self.up_LN_style2, self.up_LN_pose2,
-        #                                 self.up_query_conv2, self.up_key_conv2, self.up_value_conv2, self.up_FFN2)
-        # x = x + StyleFusion2
+        StyleFusion2 = self.my_styleatt(x, style[3], self.up_gamma2_1, self.up_gamma2_2,
+                                        self.up_gamma_style_sa2, self.up_value_conv_sa2,
+                                        self.up_LN_style2, self.up_LN_pose2,
+                                        self.up_query_conv2, self.up_key_conv2, self.up_value_conv2, self.up_FFN2)
+        x = x + StyleFusion2
         return self.model2(x), [enerrgy_sum3, enerrgy_sum4]
 
     '''
