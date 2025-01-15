@@ -10,6 +10,15 @@ from torch.nn.parameter import Parameter
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
 import functools
 
+from models.CASD_module.FreqFusion import FreqFusion
+
+'''
+使用编码器2,3层提取风格特征
+[128,128,128]
+[256,64,64]
+content编码器独立编码目标姿势
+使用FreqFusion进行高低频特征融合
+'''
 
 # Moddfied with AdINGen
 class ADGen(nn.Module):
@@ -350,6 +359,11 @@ class Decoder(nn.Module):
         # self.up_gamma2_1 = nn.Parameter(torch.zeros(1))
         # self.up_gamma2_2 = nn.Parameter(torch.zeros(1))
 
+        self.downSample=Conv2dBlock(256, 256, 4, 2, 1, norm='ln', activation=activ, pad_type=pad_type)
+        self.ff1=FreqFusion(hr_channels=256, lr_channels=256,compressed_channels=64)
+        self.ff2 = FreqFusion(hr_channels=128, lr_channels=128,compressed_channels=64)
+        self.channelDown=nn.Conv2d(256,128,1,1)
+
     # 1*256*64*64 1*2048*1*1 1*1024*1*1
     def forward(self, x, style):
         # fusion module
@@ -381,22 +395,30 @@ class Decoder(nn.Module):
         x = self.model0_5([x, x_])
         x = self.model0_6([x, x_])
         x = self.model0_7([x, x_])
-        StyleFusion0 = self.my_styleatt(x, style[1], self.up_gamma0_1, self.up_gamma0_2,
+        x = self.downSample(x)  #[1,256,32,32]
+        # x:[1,256,64,64] x0:[1,256,64,64]
+
+
+        StyleFusion0 = self.my_styleatt(x_0, style[1], self.up_gamma0_1, self.up_gamma0_2,
                                         self.up_gamma_style_sa0, self.up_value_conv_sa0,
                                         self.up_LN_style0, self.up_LN_pose0,
                                         self.up_query_conv0, self.up_key_conv0, self.up_value_conv0, self.up_FFN0)
-        x = x + StyleFusion0
 
-        x = self.model1_1(x)
+        _, x, x_up = self.ff1(hr_feat=StyleFusion0, lr_feat=x)
+        # x = x + StyleFusion0
 
-        StyleFusion1 = self.my_styleatt(x, style[2], self.up_gamma1_1, self.up_gamma1_2,
+        x_0 = self.model1_1(x_0)
+
+        StyleFusion1 = self.my_styleatt(x_0, style[2], self.up_gamma1_1, self.up_gamma1_2,
                                         self.up_gamma_style_sa1, self.up_value_conv_sa1,
                                         self.up_LN_style1, self.up_LN_pose1,
                                         self.up_query_conv1, self.up_key_conv1, self.up_value_conv1, self.up_FFN1)
 
-        x = x + StyleFusion1
+        x=self.channelDown(x+x_up)
 
-        x = self.model1_2(x)
+        # x = x + StyleFusion1
+        _,x,x_up = self.ff2(hr_feat=StyleFusion1, lr_feat=x)
+        x = self.model1_2(x+x_up)
 
         # StyleFusion2 = self.my_styleatt(x, style[3], self.up_gamma2_1, self.up_gamma2_2,
         #                                 self.up_gamma_style_sa2, self.up_value_conv_sa2,

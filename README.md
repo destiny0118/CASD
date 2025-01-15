@@ -99,12 +99,15 @@ The dataset structure is recommended as:
 ### Training
 
 ```bash
-python train.py --name CASD_StyleFusion --batchSize 8 --gpu_ids 0 --which_model_netG CASD_StyleFusion --checkpoints_dir ./checkpoints
+python train.py --name CASD_StyleFusion --batchSize 1 --gpu_ids 0 --which_model_netG CASD_StyleFusion --checkpoints_dir ./checkpoints
 ```
 
 ```bash
-python train.py   --gpu_ids 0 
+python train.py --name CASD_StyleFusion_FreqFusion --batchSize 1 --gpu_ids 0 --which_model_netG CASD_StyleFusion_FreqFusion 
+```
 
+```bash
+python train.py --name CASD_StyleFusion_Haar --which_model_netG CASD_StyleFusion_Haar --batchSize 1 --gpu_ids 0  --nThreads 0
 ```
 
 The models are save in `./checkpoints`.

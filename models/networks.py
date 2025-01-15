@@ -142,6 +142,12 @@ def define_G(input_nc, output_nc, ngf, which_model_netG, norm='batch', use_dropo
     elif which_model_netG == 'CASD_StyleFusion':
         from models.CASD_StyleFusion import ADGen
         netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
+    elif which_model_netG == 'CASD_StyleFusion_FreqFusion':
+        from models.CASD_StyleFusion_FreqFusion import ADGen
+        netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
+    elif which_model_netG == 'CASD_StyleFusion_Haar':
+        from models.CASD_StyleFusion_Haar import ADGen
+        netG = ADGen(input_nc, ngf, style_dim, n_downsampling, n_res, mlp_dim)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % which_model_netG)
     if len(gpu_ids) > 1:
